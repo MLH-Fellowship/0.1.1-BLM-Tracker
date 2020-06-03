@@ -1,2 +1,3 @@
 blackbox-admins.txt text eol=lf
 blackbox-files.txt text eol=lf
+sudo chown -R $(whoami) /usr/local/lib/pkgconfig

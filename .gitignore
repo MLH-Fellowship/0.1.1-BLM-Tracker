@@ -2,6 +2,7 @@
 twitterAPIKeys.py
 .DS_Store
 test.py
+test.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
