@@ -3,10 +3,18 @@
 #
 
 
-import tweepy
-from twitterAPIKeys import *
-import json
-import sys
+importModules = ['sys', 'tweepy', 'json', 'googlemaps']
+for module in importModules:
+    try:
+        globals()[module] = __import__(module)
+    except ImportError:
+        print("'{}' was not successfully imported, please install '{}' and try again".format(module, module))
+        quit()
+    except Exception as exception:
+        print("{} exception was thrown when trying to import '{}'".format(exception, module))
+        quit()
+
+from apiKeys import *
 
 
 tweetCounter = 0
