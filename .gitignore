@@ -1,3 +1,8 @@
+# BLM-Tracker Specific Files
+twitterAPIKeys.py
+.DS_Store
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
