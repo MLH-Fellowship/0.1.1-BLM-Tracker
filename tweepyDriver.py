@@ -35,13 +35,14 @@ class MyStreamListener(tweepy.StreamListener):
         if location:
             coordinates = locationIsValid(location)
             if coordinates:
-                # for testing
-                with open("test.json", 'a') as jsonFile:
-                    jsonFile.write(json.dumps(obj, indent=4) + "\n")
-                tweetCounter += 1
-                print("Location Validated! {}".format(tweetCounter))
-                if tweetCounter == tweetLimit:
-                    sys.exit(0)
+                if coordinatesInBounds(obj["place"]["bounding_box"]["coordinates"][0][0]):
+                    # Replace with database insertion
+                    with open("test.json", 'a') as jsonFile:
+                        jsonFile.write(json.dumps(obj, indent=4) + "\n")
+                    tweetCounter += 1
+                    print("Location Validated! {}".format(tweetCounter))
+                    if tweetCounter == tweetLimit:
+                        sys.exit(0)
 
     def on_status(self, status):
         print(status.text)
