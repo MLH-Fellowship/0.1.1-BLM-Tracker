@@ -1,2 +1,3 @@
 googlemaps
 tweepy
+langdetect

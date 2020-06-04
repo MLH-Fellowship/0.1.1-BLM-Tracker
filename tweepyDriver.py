@@ -32,7 +32,7 @@ class MyStreamListener(tweepy.StreamListener):
         sys.stdout.flush()
         obj = json.loads(data)
         location = locationExists(obj)
-        if location:
+        if location and isEnglish(obj):
             coordinates = locationIsValid(location)
             if coordinates:
                 # for testing

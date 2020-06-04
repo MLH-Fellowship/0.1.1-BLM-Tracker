@@ -3,7 +3,7 @@
 #
 
 
-importModules = ['sys', 'tweepy', 'json', 'googlemaps', 'time']
+importModules = ['sys', 'tweepy', 'json', 'googlemaps', 'time', 'langdetect']
 for module in importModules:
     try:
         globals()[module] = __import__(module)
@@ -14,10 +14,12 @@ for module in importModules:
         print("{} exception was thrown when trying to import '{}'".format(exception, module))
         quit()
 
-
+import langdetect  # TODO: Remove
 from apiKeys import *
 
 gMaps = googlemaps.Client(key=googlemaps_api_key)
+langdetect.DetectorFactory.seed = 0
+
 
 rateLimitWaitTime = 1
 filterTerms = list()
@@ -57,6 +59,22 @@ def locationExists(jsonOBJ):
 
 def coordinatesInBounds(coordinates):
     return topRight[0] >= coordinates[0] >= bottomLeft[0] and bottomLeft[1] >= coordinates[1] >= topRight[1]
+
+
+def isEnglish(jsonOBJ):
+    if jsonOBJ['lang'] == 'en':
+        return True
+    tweetText = jsonOBJ['extended_tweet']['full_text'] if jsonOBJ['truncated'] else jsonOBJ['quoted_status']['text']
+    if langdetect.detect(tweetText) == 'en':
+        return True
+    confidences = langdetect.detect_langs(tweetText)
+    for confidence in confidences:
+        if confidence.prob > 95:  # 95% is two standard deviations on a normal curve
+            if confidence.lang == 'en':
+                return True
+        else:
+            break
+    return False
 
 
 def locationIsValid(location):
