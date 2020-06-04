@@ -14,7 +14,6 @@ for module in importModules:
         print("{} exception was thrown when trying to import '{}'".format(exception, module))
         quit()
 
-import langdetect  # TODO: Remove
 from apiKeys import *
 
 gMaps = googlemaps.Client(key=googlemaps_api_key)
@@ -44,7 +43,6 @@ def rateLimitWait():
 
 
 def locationExists(jsonOBJ):
-    # print(json.dumps(jsonOBJ, indent=4))
     if "limit" in jsonOBJ:
         rateLimitWait()
         return False

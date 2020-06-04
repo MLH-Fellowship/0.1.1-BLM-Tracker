@@ -1,3 +1,9 @@
-googlemaps
+googlemaps~=4.4.1
 tweepy
 langdetect
+urllib3~=1.25.9
+pandas~=1.0.4
+numpy~=1.18.4
+matplotlib~=3.2.1
+scikit-learn~=0.23.1
+tensorflow~=2.2.0

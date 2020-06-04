@@ -5,6 +5,7 @@ apiKeys.py
 test.py
 test.json
 test.txt
+sentimentAnalysisData/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
