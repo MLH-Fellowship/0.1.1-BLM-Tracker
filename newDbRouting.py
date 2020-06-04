@@ -17,11 +17,11 @@ def fetch_tweets():
   db = client.tweetDatabase
   coll = db.tweetCollection
 
-  cursor = coll.find({},tailable=True,timeout=False)
+  #cursor = coll.find({},tailable=True,timeout=False)
 
   # iterate through db and send to front end
 
-  # --------------------------- this section is just for testing if everything is running, feel free to comment all this out --------------------
+  # ------------------------------ this section is just for testing if everything is running, feel free to comment all this out ------------------------------
 
   # test to see if connection properly made
   print ("\nReturn every document:")
@@ -44,24 +44,26 @@ def fetch_tweets():
       # access each document's "_id" key
       print ("\ndoc _id:", doc["_id"])
 
-  # ------------------------------------------------------ end of testing section ------------------------------------------------------
+  # ------------------------------ end of testing section ------------------------------
 
 
-  # ------------------------------ beginning of iterator section ------------------------------------
+  # ******************* beginning of iterator section *******************
 
   # section of code that goes through tweets and adds lat and long of tweets into 'data' so 'data' can later be passed into the html file
   docs.coll.find()
-  data = {}
+  data = [] # empty array to store lat and long values as for each tweet in dictioary format. Will be an array of dictionaries
+
+  # next() is supposed to return something like {'_id': ObjectId('5cda8b3b665444800ad30129'), 'field': 'value'}, which should be the document. As such, feel free to change the variable names below to reflect how our documents look
+
   # iterate through db collection and add each document's latitude and longitude
-  # feel free to change variable names to suit db format
   for lat, long in docs.next().items():
       data += {'lat': lat, 'long': long}
 
-  # ------------------------------ end of iterator section ------------------------------------
+  # ******************* end of iterator section *******************
 
 
   # example of data to pass to js file
-  data = {'username': 'tweet', 'site': 'stackoverflow.com'}
+  #data = {'username': 'tweet', 'site': 'stackoverflow.com'}  # I commented this out since the data from a few lines above should be able to be passed in as a parameter. If not then feel free to make adjustments and let me know
   return render_template('newHeatmap.html', data=data)
 
 
