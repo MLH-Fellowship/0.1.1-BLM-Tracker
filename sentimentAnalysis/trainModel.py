@@ -62,11 +62,20 @@ def tweetTokenizer(tweet):
 
 
 def postProcess(data):
+    print("Tokenizing and scrubbing tweets:")
     data['tokens'] = data['Tweet'].progress_map(tweetTokenizer)
     data = data[data.tokens != 'Invalid tweet']
     data.reset_index(inplace=True)
     data.drop('index', inplace=True, axis=1)
     return data
+
+
+def labelTokens(tweets, label):
+    labeledTokens = list()
+    for index, tokens in tqdm(enumerate(tweets)):
+        label = '%s_%s' % (label, index)
+        labeledTokens.append(LabeledSentence(tokens, [label]))
+    return labeledTokens
 
 
 def main():
@@ -76,6 +85,9 @@ def main():
 
     # Scrubbing and verifying data
     trainingData = postProcess(trainingData)
+    trainingX, trainingY = np.array(trainingData.tokens), np.array(trainingData.Sentiment)
+    print("\nLabelling tweets")
+    trainingX, trainingY = labelTokens(trainingX, "TRAIN"), labelTokens(trainingY, "TRAIN")
     # print(trainingData['Sentiment'].value_counts())
 
 
