@@ -22,3 +22,8 @@ def iterate_tweetCollection():
 
     # for tweet in tweets_iterator:
     #    print(tweet['place'])
+
+
+store_tweet({
+    "name": 'stella'
+})
