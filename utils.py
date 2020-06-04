@@ -3,19 +3,19 @@
 #
 
 
+from apiKeys import *
 importModules = ['sys', 'tweepy', 'json', 'googlemaps', 'time']
 for module in importModules:
     try:
         globals()[module] = __import__(module)
     except ImportError:
-        print("'{}' was not successfully imported, please install '{}' and try again".format(module, module))
+        print("'{}' was not successfully imported, please install '{}' and try again".format(
+            module, module))
         quit()
     except Exception as exception:
-        print("{} exception was thrown when trying to import '{}'".format(exception, module))
+        print("{} exception was thrown when trying to import '{}'".format(
+            exception, module))
         quit()
-
-
-from apiKeys import *
 
 gMaps = googlemaps.Client(key=googlemaps_api_key)
 
@@ -66,3 +66,7 @@ def locationIsValid(location):
         return True
     print("Validation failed")
     return False
+
+
+def store_tweet(tw, col):
+    col.insert_one(tw)
