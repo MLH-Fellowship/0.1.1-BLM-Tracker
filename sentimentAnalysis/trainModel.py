@@ -39,9 +39,22 @@ def ingestData(filePath):
     return data
 
 
-def main():
-    trainingData = ingestData(trainingDataFile)  # TODO: change to training file
+def tweetTokenizer(tweet):
+    try:
+        tweet = str(tweet.decode('utf-8').lower())
+        tokens = tokenizer.tokenize(tweet)
+        tokens = filter(lambda t: not t.startswith('@'), tokens)
+        tokens = filter(lambda t: not t.startswith('http'), tokens)
+        for token in tokens:
+            print(token)
+        return tokens
+    except:
+        return 'Invalid tweet'
 
+
+def main():
+    trainingData = ingestData(testDataFile)  # TODO: change to training file
+    # print(tweetTokenizer(trainingDataFile))
 
 
 if __name__ == "__main__":
