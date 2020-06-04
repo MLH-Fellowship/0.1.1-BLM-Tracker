@@ -10,8 +10,14 @@ import numpy as np
 from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import TaggedDocument
 
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.text import text_to_word_sequence
+
 from tqdm import tqdm
-tqdm.pandas(desc="progress-bar")
+tqdm.pandas()
 
 from nltk.tokenize import TweetTokenizer  # a tweet tokenizer from nltk.
 tokenizer = TweetTokenizer()
@@ -117,6 +123,24 @@ def main():
     print("\n Vectorizing and scaling training data:")
     trainingVectors = np.concatenate([buildWordVector(z, dimensionCount) for z in tqdm(map(lambda x: x.words, trainingX))])
     trainingVectors = scale(trainingVectors)
+
+    # Construct sentiment analysis model
+    sentimentLSTM = keras.Sequential()
+    kerasTokenizer = Tokenizer()
+    kerasTokenizer.fit_on_texts(trainingX)
+    inputDim = len(kerasTokenizer.word_index) + 1
+    # TODO: get length of max tweet
+    # TODO: pad tweets
+    sentimentLSTM.add(layers.Embedding(input_dim=inputDim, output_dim=256))
+    sentimentLSTM.add(layers.GRU(256, dropout=0.2, recurrent_dropout=0.5, return_sequences=True))
+    sentimentLSTM.add(layers.GRU(128, dropout=0.2, recurrent_dropout=0.5))
+    sentimentLSTM.add(layers.Dense(3, activation='softmax'))
+    sentimentLSTM.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
+
+    # sentimentLSTMHistory = sentimentLSTM.fit(trainingX, trainingY, validation_split=0.2, epochs=10, batch_size=256)  # 100 epochs
+    # print(sentimentLSTMHistory)
+    # loss, accuracy = sentimentLSTM.evaluate(trainingX, trainingY, verbose=False)
+    # print("Training Accuracy: {:.4f}".format(accuracy))
 
     print("\nFinished up to this point")  # TODO: Remove
 
