@@ -3,23 +3,36 @@
 #
 
 
+import datetime
+from random import randint
+import json
+from pymongo import MongoClient
+from utils import *
+from apiKeys import *
+from urllib3.exceptions import ProtocolError
 importModules = ['sys', 'tweepy', 'json', 'googlemaps', 'time']
 for module in importModules:
     try:
         globals()[module] = __import__(module)
     except ImportError:
-        print("'{}' was not successfully imported, please install '{}' and try again".format(module, module))
+        print("'{}' was not successfully imported, please install '{}' and try again".format(
+            module, module))
         quit()
     except Exception as exception:
-        print("{} exception was thrown when trying to import '{}'".format(exception, module))
+        print("{} exception was thrown when trying to import '{}'".format(
+            exception, module))
         quit()
 
-from urllib3.exceptions import ProtocolError
-from apiKeys import *
-from utils import *
+
+# Connect to MongoDB
+client = MongoClient('mongodb://localhost:27017')
+db = client.tweetDatabase
+col = db.tweetCollection
+#db.command('convertToCapped', 'tweetCollection', size=5242880)
+# print("connected to MongoDB:", client["HOST"])
 
 tweetCounter = 0
-tweetLimit = 30
+tweetLimit = 3
 trialCounter = 0
 
 
@@ -35,14 +48,13 @@ class MyStreamListener(tweepy.StreamListener):
         if location:
             coordinates = locationIsValid(location)
             if coordinates:
-                if coordinatesInBounds(obj["place"]["bounding_box"]["coordinates"][0][0]):
-                    # Replace with database insertion
-                    with open("test.json", 'a') as jsonFile:
-                        jsonFile.write(json.dumps(obj, indent=4) + "\n")
-                    tweetCounter += 1
-                    print("Location Validated! {}".format(tweetCounter))
-                    if tweetCounter == tweetLimit:
-                        sys.exit(0)
+                # if coordinatesInBounds(obj["place"]["bounding_box"]["coordinates"][0][0]):
+                store_tweet(obj, col)
+
+                tweetCounter += 1
+                print("Location Validated! {}".format(tweetCounter))
+                if tweetCounter == tweetLimit:
+                    sys.exit(0)
 
     def on_status(self, status):
         print(status.text)
@@ -60,7 +72,8 @@ def main():
 
     auth = tweepy.OAuthHandler(twitter_api_key, twitter_api_secret_key)
     auth.set_access_token(twitter_access_token, twitter_access_token_secret)
-    api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+    api = tweepy.API(auth, wait_on_rate_limit=True,
+                     wait_on_rate_limit_notify=True)
 
     myStreamListener = MyStreamListener()
     myStream = tweepy.Stream(auth=api.auth, listener=myStreamListener)
@@ -68,7 +81,8 @@ def main():
 
     while True:
         try:
-            myStream.filter(track=filterTerms, is_async=True)  # Temporary filter
+            # Temporary filter
+            myStream.filter(track=filterTerms, is_async=True)
         except (ProtocolError, AttributeError):
             print("\nIncompleteRead error encountered, continuing\n")
             continue
