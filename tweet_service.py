@@ -24,7 +24,7 @@ from flask import abort
 from flask import url_for
 from flask import make_response
 from flask import Response
-from pymongo import Connection
+from pymongo import MongoClient
 from bson import json_util
 from threading import Thread
 
@@ -32,15 +32,16 @@ from threading import Thread
 red = redis.StrictRedis()
 
 def signal_handler(signal, frame):
-    print 'You pressed Ctrl+C!'
+    print ('You pressed Ctrl+C!')
     sys.exit(0)
 
 def tail_mongo_thread():
-    print "beginning to tail..."
+    print ("beginning to tail...")
 
     # maybe reestablish db connection here like we did in tstream.py file instead of having tweets stream straight from tweepy
     # new db connection 
-    db = Connection().tweetDatabase
+    client = MongoClient('mongodb://localhost:27017')
+    db = client.tweetDatabase
     coll = db.tweetCollection
 
     # old db connection
@@ -48,7 +49,7 @@ def tail_mongo_thread():
     #coll = db.tweets_tail
 
     # look into if this coordinate system still stands for our implementation
-    cursor = coll.find({"coordinates.type" : "Point" }, {"coordinates" :1},tailable=True,timeout=False)
+    cursor = coll.find({},tailable=True,timeout=False)
 
     ci=0
     while cursor.alive:
@@ -65,7 +66,7 @@ def event_stream():
     i=0
     for message in pubsub.listen():
         i+=1
-        print i
+        print (i)
         yield 'data: %s\n\n' % message['data']
 
 app = Flask(__name__)
@@ -86,4 +87,4 @@ def runThread():
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
     app.before_first_request(runThread)
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='127.0.0.1')
