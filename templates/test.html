@@ -1,0 +1,52 @@
+<!-- source: https://developers.google.com/maps/documentation/javascript/earthquakes#heatmaps -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 100%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <table class="table" id="expenses-list">
+    <script>
+      var coordinatesData = '{{ data }}';
+      
+      console.log(coordinatesData)
+      // const expList = document.querySelector("#expenses-list");
+
+      // for (coord in coordinatesData) {
+      //   var obj = JSON.parse(coord);
+    
+      //   //create html elements - 1 row and 3 cells
+      //   let tr = document.createElement('tr');
+      //   let name = document.createElement('td');
+      //   let cost = document.createElement('td');
+      //   let category = document.createElement('td');
+
+      //   //set html table cells according obj from database 
+      //   name.textContent = expArray[i];
+      //   cost.textContent = exp.cost;
+      //   category.textContent = exp.category;
+
+      //   //combine table cells into 1 row
+      //   tr.appendChild(name);
+      //   tr.appendChild(cost);
+      //   tr.appendChild(category);
+
+      //   //add row to expense list table
+      //   expList.appendChild(tr);
+      // }
+    </script>
+  </body>
+</html>
