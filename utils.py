@@ -2,24 +2,43 @@
 # Created by Parthiv Chigurupati, Stella Wang, and Amir Yalamov
 #
 
-import sys
-import time
-import json
-import googlemaps
+
+importModules = ['sys', 'tweepy', 'json', 'googlemaps', 'time']
+for module in importModules:
+    try:
+        globals()[module] = __import__(module)
+    except ImportError:
+        print("'{}' was not successfully imported, please install '{}' and try again".format(module, module))
+        quit()
+    except Exception as exception:
+        print("{} exception was thrown when trying to import '{}'".format(exception, module))
+        quit()
+
+
 from apiKeys import *
 
 gMaps = googlemaps.Client(key=googlemaps_api_key)
 
 rateLimitWaitTime = 1
+filterTerms = list()
+termFileName = "BLMTerms.txt"
+
+topRight = [49.123606, -65.688553]
+bottomLeft = [24.349138, -124.923975]
+
+
+def loadTerms():
+    global filterTerms
+    termFile = open(termFileName, "r+")
+    tmpTerms = termFile.readlines()
+    for term in tmpTerms:
+        filterTerms.append(term)
+        filterTerms.append("#" + term.strip().lower().replace(" ", ""))
+    print("\n" * 2)
 
 
 def rateLimitWait():
-    print("\nRate limit exceeded, waiting for {} seconds\n".format(rateLimitWaitTime))
-    for seconds in range(rateLimitWaitTime):
-        sys.stdout.write("\rSeconds Remaining: {}".format(rateLimitWaitTime - seconds))
-        sys.stdout.flush()
-        time.sleep(1)
-    print("\n" * 3)
+    time.sleep(rateLimitWaitTime)
 
 
 def locationExists(jsonOBJ):
@@ -36,11 +55,14 @@ def locationExists(jsonOBJ):
     return False
 
 
+def coordinatesInBounds(coordinates):
+    return topRight[0] >= coordinates[0] >= bottomLeft[0] and bottomLeft[1] >= coordinates[1] >= topRight[1]
+
+
 def locationIsValid(location):
     geocode_result = gMaps.geocode(location)
-    print("Validating location")
+    print("\nValidating location")
     if geocode_result:
-        print("Location Validated!: {}".format(geocode_result))
-        return geocode_result[0]['geometry']
+        return geocode_result[0]
     print("Validation failed")
     return False

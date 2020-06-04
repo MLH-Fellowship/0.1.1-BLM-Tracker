@@ -20,29 +20,27 @@ from utils import *
 
 tweetCounter = 0
 tweetLimit = 30
-tweets = list()
 trialCounter = 0
 
 
 class MyStreamListener(tweepy.StreamListener):
 
     def on_data(self, data):
-        global trialCounter
+        global trialCounter, tweetCounter
         trialCounter += 1
-        print(trialCounter)
+        sys.stdout.write("\rTweet #: {}".format(trialCounter))
+        sys.stdout.flush()
         obj = json.loads(data)
         location = locationExists(obj)
         if location:
             coordinates = locationIsValid(location)
             if coordinates:
-                # replace with database insertions
-                tweets.append(obj)
                 # for testing
-                global tweetCounter
+                with open("test.json", 'a') as jsonFile:
+                    jsonFile.write(json.dumps(obj, indent=4) + "\n")
                 tweetCounter += 1
-                print(tweetCounter)
+                print("Location Validated! {}".format(tweetCounter))
                 if tweetCounter == tweetLimit:
-                    writeJson()
                     sys.exit(0)
 
     def on_status(self, status):
@@ -54,25 +52,27 @@ class MyStreamListener(tweepy.StreamListener):
             rateLimitWait()
 
 
-def writeJson():
-    with open("test.json", 'w') as jsonFile:
-        for elem in tweets:
-            jsonFile.write(json.dumps(elem, indent=4) + "\n")
-
-
 def main():
+    loadTerms()
+
+    print("\nStarting streaming\n")
+
     auth = tweepy.OAuthHandler(twitter_api_key, twitter_api_secret_key)
     auth.set_access_token(twitter_access_token, twitter_access_token_secret)
     api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
     myStreamListener = MyStreamListener()
     myStream = tweepy.Stream(auth=api.auth, listener=myStreamListener)
+    myStream.disconnect()
 
     while True:
         try:
-            myStream.filter(track=['black'], is_async=True)  # Temporary filter
+            myStream.filter(track=filterTerms, is_async=True)  # Temporary filter
         except (ProtocolError, AttributeError):
             print("\nIncompleteRead error encountered, continuing\n")
+            continue
+        except TweepError:
+            print("stream object was already connected")
             continue
 
 
