@@ -4,31 +4,28 @@
 
 
 import pandas as pd
-import time
 from string import digits
 import numpy as np
-from copy import deepcopy
-from string import punctuation
-from random import shuffle
 
-import gensim
 from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import TaggedDocument
 
 from tqdm import tqdm
-
 tqdm.pandas(desc="progress-bar")
 
 from nltk.tokenize import TweetTokenizer  # a tweet tokenizer from nltk.
-
 tokenizer = TweetTokenizer()
 
-from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import scale
+
 
 trainingDataFile = "sentimentAnalysisData/trainingData.csv"
 testDataFile = "sentimentAnalysisData/testData.csv"
+dimensionCount = 200  # Number of dimensions in which to represent the words
 remove_digits = str.maketrans('', '', digits)  # To strip digits
+word2Vec = Word2Vec(size=dimensionCount, min_count=10, workers=4)  # Change based on CPU core count
+tfidf = dict()
 
 
 def ingestData(filePath):
@@ -77,6 +74,20 @@ def labelTokens(tweets, label):
     return labeledTokens
 
 
+def buildWordVector(tokens, size):
+    vec = np.zeros(size).reshape((1, size))
+    count = 0
+    for word in tokens:
+        try:
+            vec += word2Vec[word].reshape((1, size)) * tfidf[word]
+            count += 1
+        except KeyError:
+            continue
+    if count != 0:
+        vec /= count
+    return vec
+
+
 def main():
     # Ingesting training data
     trainingData = ingestData(testDataFile)  # TODO: change to training file
@@ -86,16 +97,30 @@ def main():
     trainingData = postProcess(trainingData)
     trainingX, trainingY = np.array(trainingData.tokens), np.array(trainingData.Sentiment)
     print("\nLabelling tweets")
-    trainingX, trainingY = labelTokens(trainingX, "TRAIN"), labelTokens(trainingY, "TRAIN")
+    trainingX = labelTokens(trainingX, "TRAIN")
 
     # Training the word to vector classifier to contextualize relevant words
-    word2Vec = Word2Vec(size=200, min_count=10, workers=4)  # Change based on CPU core count
+    global word2Vec
     print("\nConstructing Word to Vector vocabulary:")
     word2Vec.build_vocab([x.words for x in tqdm(trainingX)])
     print("\nTraining Word to Vector classifier:")
     word2Vec.train(sentences=[x.words for x in tqdm(trainingX)], total_examples=len(trainingX), epochs=10)
 
-    print(word2Vec.wv.most_similar('good'))
+    # Determining the importance of each word by constructing an tfidf model
+    global tfidf
+    print("\nConstructing TF-IDF Similarity Matrix:")
+    vectorizedTfidf = TfidfVectorizer(analyzer=lambda x: x, min_df=10)
+    tfdifMatrix = vectorizedTfidf.fit_transform([x.words for x in tqdm(trainingX)])
+    tfidf = dict(zip(vectorizedTfidf.get_feature_names(), vectorizedTfidf.idf_))
+
+    # Vectorize and scale training data
+    print("\n Vectorizing and scaling training data:")
+    trainingVectors = np.concatenate([buildWordVector(z, dimensionCount) for z in tqdm(map(lambda x: x.words, trainingX))])
+    trainingVectors = scale(trainingVectors)
+
+    print("\nFinished up to this point")  # TODO: Remove
+
+    # print(word2Vec.wv.most_similar('good'))
     # print(trainingData['Sentiment'].value_counts())
 
 
