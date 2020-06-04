@@ -8,7 +8,7 @@ HTTP and JSON/JSONP
 
 
 DB = 'tweetDatabase'  # (done) this is just the name of the file that creates a stream, change db name to reflect our db name
-CELLS_COLLECTION = 'tweetCollection' 
+CELLS_COLLECTION = 'tweetCollection'
 
 
 import json
@@ -39,10 +39,11 @@ def tail_mongo_thread():
     print "beginning to tail..."
 
     # maybe reestablish db connection here like we did in tstream.py file instead of having tweets stream straight from tweepy
-
+    # new db connection 
     db = Connection().tweetDatabase
     coll = db.tweetCollection
 
+    # old db connection
     #db = Connection().tstream   # change db name to reflect our db name
     #coll = db.tweets_tail
 
