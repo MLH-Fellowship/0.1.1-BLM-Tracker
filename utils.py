@@ -56,13 +56,13 @@ def locationExists(jsonOBJ):
 
 
 def coordinatesInBounds(coordinates):
-    return topRight[0] >= coordinates[0] >= bottomLeft[0] and bottomLeft[1] >= coordinates[1] >= topRight[1]
+    return topRight[0] >= coordinates[1] >= bottomLeft[0] and bottomLeft[1] >= coordinates[0] >= topRight[1]
 
 
 def locationIsValid(location):
     geocode_result = gMaps.geocode(location)
     print("\nValidating location")
     if geocode_result:
-        return geocode_result[0]
+        return True
     print("Validation failed")
     return False
