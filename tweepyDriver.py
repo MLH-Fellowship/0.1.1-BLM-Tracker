@@ -71,9 +71,6 @@ def main():
         except (ProtocolError, AttributeError):
             print("\nIncompleteRead error encountered, continuing\n")
             continue
-        except TweepError:
-            print("stream object was already connected")
-            continue
 
 
 if __name__ == "__main__":
