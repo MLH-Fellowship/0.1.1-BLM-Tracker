@@ -34,10 +34,7 @@ remove_digits = str.maketrans('', '', digits)  # To strip digits
 
 def ingestData(filePath):
     # Reading data
-    print('\nReading data')
-    startTime = time.time()
     data = pd.read_csv(filePath, encoding='latin-1')
-    print('Finished reading data: {} seconds'.format(time.time() - startTime))
 
     # Appending top row to the bottom to add column labels to data
     topRow = pd.DataFrame(data.iloc[0])
@@ -48,11 +45,7 @@ def ingestData(filePath):
     data.drop(['id', 'time', 'client', 'user'], axis=1, inplace=True)
 
     # Scale down sentiment values and convert them to ints from strings
-    data['Sentiment'] = data['Sentiment'].replace('4', 2)  # Positive
-    data['Sentiment'] = data['Sentiment'].replace('2', 1)  # Neutral
-    data['Sentiment'] = data['Sentiment'].replace('0', 0)  # Negative
-    print(data['Sentiment'].value_counts())
-    print("Data loaded with shape: {}\n".format(data.shape))
+    data.replace({'Sentiment': {4: 2, 2: 1, 0: 0}}, inplace=True)
     return data
 
 
@@ -68,9 +61,22 @@ def tweetTokenizer(tweet):
         return 'Invalid tweet'
 
 
+def postProcess(data):
+    data['tokens'] = data['Tweet'].progress_map(tweetTokenizer)
+    data = data[data.tokens != 'Invalid tweet']
+    data.reset_index(inplace=True)
+    data.drop('index', inplace=True, axis=1)
+    return data
+
+
 def main():
+    # Ingesting training data
     trainingData = ingestData(testDataFile)  # TODO: change to training file
-    print(tweetTokenizer(trainingData.iloc[1]['Tweet']))
+    print("Data loaded with shape: {}\n".format(trainingData.shape))
+
+    # Scrubbing and verifying data
+    trainingData = postProcess(trainingData)
+    # print(trainingData['Sentiment'].value_counts())
 
 
 if __name__ == "__main__":
