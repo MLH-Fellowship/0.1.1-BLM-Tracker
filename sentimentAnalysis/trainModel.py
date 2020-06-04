@@ -12,9 +12,8 @@ from string import punctuation
 from random import shuffle
 
 import gensim
-from gensim.models.word2vec import Word2Vec  # the word2vec model gensim class
-
-LabeledSentence = gensim.models.doc2vec.LabeledSentence  # we'll talk about this down below
+from gensim.models.word2vec import Word2Vec
+from gensim.models.doc2vec import TaggedDocument
 
 from tqdm import tqdm
 
@@ -72,9 +71,9 @@ def postProcess(data):
 
 def labelTokens(tweets, label):
     labeledTokens = list()
-    for index, tokens in tqdm(enumerate(tweets)):
-        label = '%s_%s' % (label, index)
-        labeledTokens.append(LabeledSentence(tokens, [label]))
+    for index, tokens in enumerate(tweets):
+        label = "{}_{}".format(label, index)
+        labeledTokens.append(TaggedDocument(words=tokens, tags=[label]))
     return labeledTokens
 
 
@@ -88,6 +87,15 @@ def main():
     trainingX, trainingY = np.array(trainingData.tokens), np.array(trainingData.Sentiment)
     print("\nLabelling tweets")
     trainingX, trainingY = labelTokens(trainingX, "TRAIN"), labelTokens(trainingY, "TRAIN")
+
+    # Training the word to vector classifier to contextualize relevant words
+    word2Vec = Word2Vec(size=200, min_count=10, workers=4)  # Change based on CPU core count
+    print("\nConstructing Word to Vector vocabulary:")
+    word2Vec.build_vocab([x.words for x in tqdm(trainingX)])
+    print("\nTraining Word to Vector classifier:")
+    word2Vec.train(sentences=[x.words for x in tqdm(trainingX)], total_examples=len(trainingX), epochs=10)
+
+    print(word2Vec.wv.most_similar('good'))
     # print(trainingData['Sentiment'].value_counts())
 
 
