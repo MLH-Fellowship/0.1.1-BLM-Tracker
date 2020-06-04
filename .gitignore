@@ -4,6 +4,7 @@ apiKeys.py
 .DS_Store
 test.py
 test.json
+test.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
