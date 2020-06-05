@@ -20,15 +20,15 @@ app = Flask(__name__)
 def fetch_tweets():
   client = MongoClient('mongodb://localhost:27017')
   db = client.tweetDatabase
-  coll = db.tweetCollection
+  coll = db.sentimentTweets
 
   docs = coll.find()
   data = [] 
 
   # iterate through db collection and add each document's latitude and longitude
   for item in docs:
-    # s = '{\"lat\": ' + str(item['place']['bounding_box']['coordinates'][0][0][0]) + ', \"long\": ' + str(item['place']['bounding_box']['coordinates'][0][0][1]) + ', \"Sentiment\": ' + str(item['Sentiment'])  + '}'
-    s = '{\"lat\": ' + str(item['place']['bounding_box']['coordinates'][0][0][0]) + ', \"long\": ' + str(item['place']['bounding_box']['coordinates'][0][0][1]) + '}'
+    s = '{\"lat\": ' + str(item['place']['bounding_box']['coordinates'][0][0][0]) + ', \"long\": ' + str(item['place']['bounding_box']['coordinates'][0][0][1]) + ', \"Sentiment\": ' + str(item['Sentiment'])  + '}'
+    # s = '{\"lat\": ' + str(item['place']['bounding_box']['coordinates'][0][0][0]) + ', \"long\": ' + str(item['place']['bounding_box']['coordinates'][0][0][1]) + '}'
     data.append(s)
 
   separator = ', '

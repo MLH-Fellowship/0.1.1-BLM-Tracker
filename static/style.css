@@ -5,16 +5,17 @@
 
 html, body {
     height: 100%;
-    margin: 0;
+    margin: 10;
     padding: 0;
-}
-
-h1 {
-    text-align: center;
 }
 
 h6 {
     text-align: center;
-    font-size: 12px;
+    font-size: 14px;
     color: #6d7273;
+}
+
+button {
+    margin-left: 12px;
+    margin-top: 12px;
 }
