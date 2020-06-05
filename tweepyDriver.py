@@ -15,19 +15,15 @@ for module in importModules:
         quit()
 
 from urllib3.exceptions import ProtocolError
-from apiKeys import *
 from utils import *
 
 tweetCounter = 0
-tweetLimit = 30
-trialCounter = 0
 
 
 class MyStreamListener(tweepy.StreamListener):
 
     def on_data(self, data):
-        global trialCounter, tweetCounter
-        trialCounter += 1
+        global tweetCounter
         sys.stdout.write("\rTweet #: {}".format(trialCounter))
         sys.stdout.flush()
         obj = json.loads(data)
@@ -35,13 +31,9 @@ class MyStreamListener(tweepy.StreamListener):
         if location and isEnglish(obj):
             coordinates = locationIsValid(location)
             if coordinates:
-                # for testing
-                with open("test.json", 'a') as jsonFile:
-                    jsonFile.write(json.dumps(obj, indent=4) + "\n")
+                obj['Sentiment'] = getSentiment(obj)
                 tweetCounter += 1
                 print("Location Validated! {}".format(tweetCounter))
-                if tweetCounter == tweetLimit:
-                    sys.exit(0)
 
     def on_status(self, status):
         print(status.text)
