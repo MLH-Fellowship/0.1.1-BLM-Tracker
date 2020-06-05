@@ -22,7 +22,6 @@ import keras.backend.tensorflow_backend as tfback
 from tqdm import tqdm
 
 from nltk.tokenize import TweetTokenizer  # a tweet tokenizer from nltk.
-
 tokenizer = TweetTokenizer()
 tqdm.pandas()
 
@@ -97,13 +96,14 @@ def generateEmbeddingsIndex(generatePickle=False):
 
 def generateEmbeddingsMatrix():
     global tweets, labels
+
     kerasTokenizer = Tokenizer(num_words=maxWordCount)
     kerasTokenizer.fit_on_texts(tweets)
     tweetArray = kerasTokenizer.texts_to_sequences(tweets)
-    word_index = kerasTokenizer.word_index
-    print('Found %s unique tokens.' % len(word_index))
 
-    num_words = min(len(word_index) + 1, maxWordCount)
+    word_index = kerasTokenizer.word_index
+    print('\nFound %s unique tokens\n' % len(word_index))
+
     tweets = pad_sequences(tweetArray, maxlen=maxTokenLength)
 
     print('Shape of data tensor:', tweets.shape)
@@ -115,6 +115,8 @@ def generateEmbeddingsMatrix():
     labels = labels[indices]
 
     global embeddingsMatrix
+
+    num_words = min(len(word_index) + 1, maxWordCount)
     embeddingsMatrix = np.zeros((num_words, dimensionCount))
     for word, i in word_index.items():
         if i >= maxWordCount:
@@ -141,6 +143,8 @@ def _get_available_gpus():
 
 def main():
     tfback._get_available_gpus = _get_available_gpus
+    # Generating embeddings matrix
+    generateEmbeddingsIndex()
 
     # Ingesting training data
     trainingData = ingestData(testDataFile)  # TODO: change to training file
@@ -149,13 +153,6 @@ def main():
     tweets = trainingData['tokens'].to_list()
     labels = trainingData['Sentiment'].to_list()
     labels = to_categorical(np.asarray(labels))
-
-    testData = ingestData(testDataFile)
-    testData = postProcess(testData)
-    testX, testY = np.array(testData.tokens), to_categorical(np.asarray(testData.Sentiment))
-
-    # Generating embeddings matrix
-    generateEmbeddingsIndex()
 
     # Scrubbing and verifying data
     uniqueWordCount = generateEmbeddingsMatrix()
@@ -178,6 +175,10 @@ def main():
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
 
     print(model.summary())
+
+    testData = ingestData(testDataFile)
+    testData = postProcess(testData)
+    testX, testY = np.array(testData.tokens), to_categorical(np.asarray(testData.Sentiment))
 
     model.fit(tweets, labels, batch_size=128, epochs=10, validation_data=(testX, testY))
 

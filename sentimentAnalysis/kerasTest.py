@@ -14,6 +14,7 @@ from __future__ import print_function
 import os
 import sys
 import numpy as np
+import pandas as pd
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils import to_categorical
@@ -21,6 +22,15 @@ from keras.layers import Dense, Input, GlobalMaxPooling1D
 from keras.layers import Conv1D, MaxPooling1D, Embedding
 from keras.models import Model
 from keras.initializers import Constant
+
+from string import digits
+remove_digits = str.maketrans('', '', digits)  # To strip digits
+
+from tqdm import tqdm
+
+from nltk.tokenize import TweetTokenizer  # a tweet tokenizer from nltk.
+tokenizer = TweetTokenizer()
+tqdm.pandas()
 
 
 BASE_DIR = 'sentimentAnalysisData'
@@ -30,6 +40,8 @@ MAX_SEQUENCE_LENGTH = 1000
 MAX_NUM_WORDS = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
+
+testDataFile = "sentimentAnalysisData/testData.csv"
 
 # first, build index mapping words in the embeddings set
 # to their embedding vector
@@ -48,25 +60,47 @@ print('Found %s word vectors.' % len(embeddings_index))
 # second, prepare text samples and their labels
 print('Processing text dataset')
 
-texts = []  # list of text samples
 labels_index = {}  # dictionary mapping label name to numeric id
-labels = []  # list of label ids
-for name in sorted(os.listdir(TEXT_DATA_DIR)):
-    path = os.path.join(TEXT_DATA_DIR, name)
-    if os.path.isdir(path):
-        label_id = len(labels_index)
-        labels_index[name] = label_id
-        for fname in sorted(os.listdir(path)):
-            if fname.isdigit():
-                fpath = os.path.join(path, fname)
-                args = {} if sys.version_info < (3,) else {'encoding': 'latin-1'}
-                with open(fpath, **args) as f:
-                    t = f.read()
-                    i = t.find('\n\n')  # skip header
-                    if 0 < i:
-                        t = t[i:]
-                    texts.append(t)
-                labels.append(label_id)
+
+################################################
+
+data = pd.read_csv(testDataFile, encoding='latin-1')
+
+# Appending top row to the bottom to add column labels to data
+topRow = pd.DataFrame(data.iloc[0])
+data.append(topRow, ignore_index=True)
+data.columns = ['Sentiment', 'id', 'time', 'client', 'user', 'Tweet']
+
+# Drop irrelevant columns
+data.drop(['id', 'time', 'client', 'user'], axis=1, inplace=True)
+
+# Scale down sentiment values and convert them to ints from strings
+data.replace({'Sentiment': {4: 2, 2: 1, 0: 0}}, inplace=True)
+
+
+def tokenFilter(token):
+    return not (token.startswith('@') or token.startswith('http') or not token.isalpha())
+
+
+def tweetTokenizer(tweet):
+    try:
+        tokens = [token.translate(remove_digits).replace('#', '') for token in tokenizer.tokenize(tweet)]
+        return ' '.join(list(filter(tokenFilter, tokens)))
+    except:
+        return 'Invalid tweet'
+
+
+print("\nTokenizing and scrubbing tweets:")
+data['tokens'] = data['Tweet'].progress_map(tweetTokenizer)
+data = data[data.tokens != 'Invalid tweet']
+data.reset_index(inplace=True)
+data.drop('index', inplace=True, axis=1)
+
+texts = data['tokens'].to_list()
+labels = data['Sentiment'].to_list()
+
+################################################
+
 
 print('Found %s texts.' % len(texts))
 
@@ -129,7 +163,7 @@ x = MaxPooling1D(5)(x)
 x = Conv1D(128, 5, activation='relu')(x)
 x = GlobalMaxPooling1D()(x)
 x = Dense(128, activation='relu')(x)
-preds = Dense(len(labels_index), activation='softmax')(x)
+preds = Dense(3, activation='softmax')(x)
 
 model = Model(sequence_input, preds)
 model.compile(loss='categorical_crossentropy',
@@ -138,5 +172,5 @@ model.compile(loss='categorical_crossentropy',
 
 model.fit(x_train, y_train,
           batch_size=128,
-          epochs=3,
+          epochs=10,
           validation_data=(x_val, y_val))
