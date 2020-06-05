@@ -6,7 +6,6 @@
 import pandas as pd
 from string import digits
 import numpy as np
-import deepdish as dd
 import pickle
 
 from keras.preprocessing.sequence import pad_sequences
@@ -27,14 +26,14 @@ from nltk.tokenize import TweetTokenizer  # a tweet tokenizer from nltk.
 tokenizer = TweetTokenizer()
 tqdm.pandas()
 
-
 trainingDataFile = "sentimentAnalysisData/trainingData.csv"
 testDataFile = "sentimentAnalysisData/testData.csv"
 embeddingsFile = "sentimentAnalysisData/glove.6B.100d.txt"
 embeddingsIndexFile = "sentimentAnalysisData/embeddingsIndex.pkl"
 dimensionCount = 100  # Number of dimensions in which to represent the words
 remove_digits = str.maketrans('', '', digits)  # To strip digits
-maxWordCount = 3000
+maxWordCount = 20000
+maxTokenLength = 1000
 embeddingsIndex, embeddingsMatrix = dict(), dict()
 tweets, labels = list(), list()
 
@@ -80,10 +79,7 @@ def postProcess(data):
 def generateEmbeddingsIndex(generatePickle=False):
     global embeddingsIndex
     if generatePickle:
-        pklFile = open(embeddingsIndexFile, 'rb')
-        embeddingsIndex = pickle.load(pklFile)
-        pklFile.close()
-    else:
+        print("\nGenerating embeddings index:")
         with open(embeddingsFile) as f:
             for line in tqdm(f, total=400000):
                 values = line.split()
@@ -93,16 +89,22 @@ def generateEmbeddingsIndex(generatePickle=False):
         output = open(embeddingsIndexFile, 'wb')
         pickle.dump(embeddingsIndex, output)
         output.close()
+    else:
+        print("\nLoading embeddings index")
+        pklFile = open(embeddingsIndexFile, 'rb')
+        embeddingsIndex = pickle.load(pklFile)
+        pklFile.close()
 
 
 def generateEmbeddingsMatrix():
     global tweets, labels
     kerasTokenizer = Tokenizer(num_words=maxWordCount)
     kerasTokenizer.fit_on_texts(tweets)
-    uniqueWordCount = len(kerasTokenizer.word_index) + 1
     tweetArray = kerasTokenizer.texts_to_sequences(tweets)
+    word_index = kerasTokenizer.word_index
+    num_words = min(len(word_index) + 1, maxWordCount)
     maxTweetLength = max(list(map(len, tweetArray)))
-    tweets = pad_sequences(tweetArray, maxlen=maxTweetLength)
+    tweets = pad_sequences(tweetArray, maxlen=maxTokenLength)
 
     indices = np.arange(tweets.shape[0])
     np.random.shuffle(indices)
@@ -110,9 +112,7 @@ def generateEmbeddingsMatrix():
     labels = labels[indices]
 
     global embeddingsMatrix
-    num_words = min(maxWordCount, uniqueWordCount)
     embeddingsMatrix = np.zeros((num_words, dimensionCount))
-    word_index = kerasTokenizer.word_index
     for word, i in word_index.items():
         if i >= maxWordCount:
             continue
@@ -120,7 +120,7 @@ def generateEmbeddingsMatrix():
         if embedding_vector is not None:
             embeddingsMatrix[i] = embedding_vector
 
-    return uniqueWordCount, maxTweetLength
+    return num_words, maxTweetLength
 
 
 def _get_available_gpus():
@@ -152,20 +152,17 @@ def main():
     testX, testY = np.array(testData.tokens), to_categorical(np.asarray(testData.Sentiment))
 
     # Generating embeddings matrix
-    print("\nGenerating embeddings index:")
     generateEmbeddingsIndex()
 
     # Scrubbing and verifying data
     uniqueWordCount, maxLength = generateEmbeddingsMatrix()
 
     # Construct sentiment analysis model
-    print("m: ", maxLength)
-    print(tweets[0])
+    embedding_layer = Embedding(uniqueWordCount, dimensionCount, embeddings_initializer=Constant(embeddingsMatrix), input_length=maxTokenLength, trainable=False)
+    sequence_input = Input(shape=(maxTokenLength,), dtype='int32')
+    embedded_sequences = embedding_layer(sequence_input)
 
-    sequence_input = Input(shape=(maxLength,), dtype='int32')
-    embedding_layer = Embedding(uniqueWordCount, dimensionCount, embeddings_initializer=Constant(embeddingsMatrix), input_length=maxLength, trainable=False)
-
-    x = Conv1D(128, 5, activation='relu', data_format='channels_first')(embedding_layer)
+    x = Conv1D(128, 5, activation='relu', data_format='channels_first')(embedded_sequences)
     x = MaxPooling1D(5)(x)
     x = Conv1D(128, 5, activation='relu', data_format='channels_first')(x)
     x = MaxPooling1D(5)(x)
@@ -174,11 +171,9 @@ def main():
     x = Dense(128, activation='relu')(x)
     preds = Dense(3, activation='softmax')(x)
 
-    print(tweets.shape)
-
     model = Model(sequence_input, preds)
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
-    
+
     print(model.summary())
 
     model.fit(tweets, labels, batch_size=128, epochs=10, validation_data=(testX, testY))
