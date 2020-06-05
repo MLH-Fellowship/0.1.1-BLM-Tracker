@@ -8,10 +8,12 @@ for module in importModules:
     try:
         globals()[module] = __import__(module)
     except ImportError:
-        print("'{}' was not successfully imported, please install '{}' and try again".format(module, module))
+        print("'{}' was not successfully imported, please install '{}' and try again".format(
+            module, module))
         quit()
     except Exception as exception:
-        print("{} exception was thrown when trying to import '{}'".format(exception, module))
+        print("{} exception was thrown when trying to import '{}'".format(
+            exception, module))
         quit()
 
 import numpy as np
@@ -27,6 +29,7 @@ from string import digits
 remove_digits = str.maketrans('', '', digits)
 
 from apiKeys import *
+
 
 gMaps = googlemaps.Client(key=googlemaps_api_key)
 langdetect.DetectorFactory.seed = 0
@@ -131,7 +134,7 @@ def locationExists(jsonOBJ):
 
 
 def coordinatesInBounds(coordinates):
-    return topRight[0] >= coordinates[0] >= bottomLeft[0] and bottomLeft[1] >= coordinates[1] >= topRight[1]
+    return topRight[0] >= coordinates[1] >= bottomLeft[0] and bottomLeft[1] >= coordinates[0] >= topRight[1]
 
 
 def isEnglish(jsonOBJ):
@@ -154,6 +157,10 @@ def locationIsValid(location):
     geocode_result = gMaps.geocode(location)
     print("\nValidating location")
     if geocode_result:
-        return geocode_result[0]
+        return True
     print("Validation failed")
     return False
+
+
+def store_tweet(tw, col):
+    col.insert_one(tw)

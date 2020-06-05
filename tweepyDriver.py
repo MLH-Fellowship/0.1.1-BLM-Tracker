@@ -3,15 +3,21 @@
 #
 
 
+from pymongo import MongoClient
+from utils import *
+from apiKeys import *
+from urllib3.exceptions import ProtocolError
 importModules = ['sys', 'tweepy', 'json', 'googlemaps', 'time']
 for module in importModules:
     try:
         globals()[module] = __import__(module)
     except ImportError:
-        print("'{}' was not successfully imported, please install '{}' and try again".format(module, module))
+        print("'{}' was not successfully imported, please install '{}' and try again".format(
+            module, module))
         quit()
     except Exception as exception:
-        print("{} exception was thrown when trying to import '{}'".format(exception, module))
+        print("{} exception was thrown when trying to import '{}'".format(
+            exception, module))
         quit()
 
 from urllib3.exceptions import ProtocolError
@@ -19,6 +25,12 @@ from utils import *
 
 tweetCounter = 0
 
+# Connect to MongoDB
+client = MongoClient('mongodb://localhost:27017')
+db = client.tweetDatabase
+col = db.tweetCollection
+#db.command('convertToCapped', 'tweetCollection', size=5242880)
+# print("connected to MongoDB:", client["HOST"])
 
 class MyStreamListener(tweepy.StreamListener):
 
@@ -32,6 +44,7 @@ class MyStreamListener(tweepy.StreamListener):
             coordinates = locationIsValid(location)
             if coordinates:
                 obj['Sentiment'] = getSentiment(obj)
+                store_tweet(obj, col)
                 tweetCounter += 1
                 print("Location Validated! {}".format(tweetCounter))
 
@@ -51,7 +64,8 @@ def main():
 
     auth = tweepy.OAuthHandler(twitter_api_key, twitter_api_secret_key)
     auth.set_access_token(twitter_access_token, twitter_access_token_secret)
-    api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+    api = tweepy.API(auth, wait_on_rate_limit=True,
+                     wait_on_rate_limit_notify=True)
 
     myStreamListener = MyStreamListener()
     myStream = tweepy.Stream(auth=api.auth, listener=myStreamListener)
@@ -59,7 +73,8 @@ def main():
 
     while True:
         try:
-            myStream.filter(track=filterTerms, is_async=True)  # Temporary filter
+            # Temporary filter
+            myStream.filter(track=filterTerms, is_async=True)
         except (ProtocolError, AttributeError):
             print("\nIncompleteRead error encountered, continuing\n")
             continue
