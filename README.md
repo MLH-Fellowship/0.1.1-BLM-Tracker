@@ -1,5 +1,6 @@
 # BLM Tracker
 Python project that streams Twitter data through a classifier to determine the amount of social activity surrounding a social movement and visualizing it
+
 ![UI](images/ui.png)
 
 ## Installation
