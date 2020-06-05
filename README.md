@@ -18,6 +18,14 @@ Organize and name your files as per the file structure below
 
 ![File Structure](images/fileStructure.png)
 
+## Rendering the Page
+
+Run the following python commands in the root of the repository to render BLM Tracker:
+```
+pip install -r requirements.txt
+python3 fetchDbTweets.py
+```
+
 
 ## Inspiration
 
