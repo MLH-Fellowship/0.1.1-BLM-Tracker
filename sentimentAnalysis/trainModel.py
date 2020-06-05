@@ -10,28 +10,34 @@ import numpy as np
 from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import TaggedDocument
 
+from keras.preprocessing.sequence import pad_sequences
+from keras.layers import Dense, Input, GlobalMaxPooling1D
+from keras.layers import Conv1D, MaxPooling1D, Embedding, GRU
+from keras.models import Model
+from keras.initializers import Constant
+from keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.utils import to_categorical
+
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.text import text_to_word_sequence
+import keras.backend.tensorflow_backend as tfback
+
 
 from tqdm import tqdm
-tqdm.pandas()
+tqdm.pandas(desc="progress-bar")
 
 from nltk.tokenize import TweetTokenizer  # a tweet tokenizer from nltk.
 tokenizer = TweetTokenizer()
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.preprocessing import scale
-
 
 trainingDataFile = "sentimentAnalysisData/trainingData.csv"
 testDataFile = "sentimentAnalysisData/testData.csv"
-dimensionCount = 200  # Number of dimensions in which to represent the words
+embeddingsFile = "sentimentAnalysisData/glove.6B.100d.txt"
+dimensionCount = 100  # Number of dimensions in which to represent the words
 remove_digits = str.maketrans('', '', digits)  # To strip digits
-word2Vec = Word2Vec(size=dimensionCount, min_count=10, workers=4)  # Change based on CPU core count
-tfidf = dict()
+maxWordCount = 3000
+embeddingsIndex, embeddingsMatrix = dict(), dict()
+tweets, labels = list(), list()
 
 
 def ingestData(filePath):
@@ -58,13 +64,13 @@ def tokenFilter(token):
 def tweetTokenizer(tweet):
     try:
         tokens = [token.translate(remove_digits).replace('#', '') for token in tokenizer.tokenize(tweet)]
-        return list(filter(tokenFilter, tokens))
+        return ' '.join(list(filter(tokenFilter, tokens)))
     except:
         return 'Invalid tweet'
 
 
 def postProcess(data):
-    print("Tokenizing and scrubbing tweets:")
+    print("\nTokenizing and scrubbing tweets:")
     data['tokens'] = data['Tweet'].progress_map(tweetTokenizer)
     data = data[data.tokens != 'Invalid tweet']
     data.reset_index(inplace=True)
@@ -72,80 +78,99 @@ def postProcess(data):
     return data
 
 
-def labelTokens(tweets, label):
+def labelTokens(data, label):
     labeledTokens = list()
-    for index, tokens in enumerate(tweets):
+    for index, tokens in enumerate(data):
         label = "{}_{}".format(label, index)
         labeledTokens.append(TaggedDocument(words=tokens, tags=[label]))
     return labeledTokens
 
 
-def buildWordVector(tokens, size):
-    vec = np.zeros(size).reshape((1, size))
-    count = 0
-    for word in tokens:
-        try:
-            vec += word2Vec[word].reshape((1, size)) * tfidf[word]
-            count += 1
-        except KeyError:
+def generateEmbeddingsIndex():
+    global embeddingsIndex
+    with open(embeddingsFile) as f:
+        for line in tqdm(f, total=400000):
+            word, coefs = line.split(maxsplit=1)
+            coefs = np.fromstring(coefs, 'f', sep=' ')
+            embeddingsIndex[word] = coefs
+
+
+def generateEmbeddingsMatrix(trainingData):
+    global tweets
+    kerasTokenizer = Tokenizer(num_words=maxWordCount)
+    kerasTokenizer.fit_on_texts(tweets)
+    uniqueWordCount = len(kerasTokenizer.word_index) + 1
+    tweetArray = kerasTokenizer.texts_to_sequences(tweets)
+    maxTweetLength = max(list(map(len, tweetArray)))
+    tweets = pad_sequences(tweetArray, maxlen=maxTweetLength)
+
+    global embeddingsMatrix
+    num_words = min(maxWordCount, uniqueWordCount)
+    embeddingsMatrix = np.zeros((num_words, dimensionCount))
+    word_index = kerasTokenizer.word_index
+    for word, i in word_index.items():
+        if i >= maxWordCount:
             continue
-    if count != 0:
-        vec /= count
-    return vec
+        embedding_vector = embeddingsIndex.get(word)
+        if embedding_vector is not None:
+            embeddingsMatrix[i] = embedding_vector
+
+    return uniqueWordCount, maxTweetLength
+
+
+def _get_available_gpus():
+    """Get a list of available gpu devices (formatted as strings).
+
+    # Returns
+        A list of available GPU devices.
+    """
+    #global _LOCAL_DEVICES
+    if tfback._LOCAL_DEVICES is None:
+        devices = tf.config.list_logical_devices()
+        tfback._LOCAL_DEVICES = [x.name for x in devices]
+    return [x for x in tfback._LOCAL_DEVICES if 'device:gpu' in x.lower()]
 
 
 def main():
+    tfback._get_available_gpus = _get_available_gpus
+
     # Ingesting training data
     trainingData = ingestData(testDataFile)  # TODO: change to training file
-    print("Data loaded with shape: {}\n".format(trainingData.shape))
+    trainingData = postProcess(trainingData)
+    global tweets, labels
+    tweets = trainingData['tokens'].to_list()
+    labels = trainingData['Sentiment'].to_list()
+    labels = to_categorical(np.asarray(labels))
+    testData = ingestData(testDataFile)
+    testData = postProcess(testData)
+    testX, testY = np.array(testData.tokens), to_categorical(np.asarray(testData.Sentiment))
+
+    # Generating embeddings matrix
+    print("\nGenerating embeddings index:")
+    generateEmbeddingsIndex()
 
     # Scrubbing and verifying data
-    trainingData = postProcess(trainingData)
-    trainingX, trainingY = np.array(trainingData.tokens), np.array(trainingData.Sentiment)
-    print("\nLabelling tweets")
-    trainingX = labelTokens(trainingX, "TRAIN")
-
-    # Training the word to vector classifier to contextualize relevant words
-    global word2Vec
-    print("\nConstructing Word to Vector vocabulary:")
-    word2Vec.build_vocab([x.words for x in tqdm(trainingX)])
-    print("\nTraining Word to Vector classifier:")
-    word2Vec.train(sentences=[x.words for x in tqdm(trainingX)], total_examples=len(trainingX), epochs=10)
-
-    # Determining the importance of each word by constructing an tfidf model
-    global tfidf
-    print("\nConstructing TF-IDF Similarity Matrix:")
-    vectorizedTfidf = TfidfVectorizer(analyzer=lambda x: x, min_df=10)
-    tfdifMatrix = vectorizedTfidf.fit_transform([x.words for x in tqdm(trainingX)])
-    tfidf = dict(zip(vectorizedTfidf.get_feature_names(), vectorizedTfidf.idf_))
-
-    # Vectorize and scale training data
-    print("\n Vectorizing and scaling training data:")
-    trainingVectors = np.concatenate([buildWordVector(z, dimensionCount) for z in tqdm(map(lambda x: x.words, trainingX))])
-    trainingVectors = scale(trainingVectors)
+    uniqueWordCount, maxLength = generateEmbeddingsMatrix(trainingData.Sentiment)
 
     # Construct sentiment analysis model
-    sentimentLSTM = keras.Sequential()
-    kerasTokenizer = Tokenizer()
-    kerasTokenizer.fit_on_texts(trainingX)
-    inputDim = len(kerasTokenizer.word_index) + 1
-    # TODO: get length of max tweet
-    # TODO: pad tweets
-    sentimentLSTM.add(layers.Embedding(input_dim=inputDim, output_dim=256))
-    sentimentLSTM.add(layers.GRU(256, dropout=0.2, recurrent_dropout=0.5, return_sequences=True))
-    sentimentLSTM.add(layers.GRU(128, dropout=0.2, recurrent_dropout=0.5))
-    sentimentLSTM.add(layers.Dense(3, activation='softmax'))
-    sentimentLSTM.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
+    sequence_input = Input(shape=(maxLength,), dtype='int32')
+    embedding_layer = Embedding(uniqueWordCount, dimensionCount, embeddings_initializer=Constant(embeddingsMatrix), input_length=maxLength, trainable=False)
+    embedded_sequences = embedding_layer(sequence_input)
+    x = Conv1D(128, 5, activation='relu', data_format='channels_first')(embedded_sequences)
+    x = MaxPooling1D(5)(x)
+    x = Conv1D(128, 5, activation='relu', data_format='channels_first')(x)
+    x = MaxPooling1D(5)(x)
+    x = Conv1D(128, 5, activation='relu', data_format='channels_first')(x)
+    x = GlobalMaxPooling1D()(x)
+    x = Dense(128, activation='relu')(x)
+    preds = Dense(3, activation='softmax')(x)
 
-    # sentimentLSTMHistory = sentimentLSTM.fit(trainingX, trainingY, validation_split=0.2, epochs=10, batch_size=256)  # 100 epochs
-    # print(sentimentLSTMHistory)
-    # loss, accuracy = sentimentLSTM.evaluate(trainingX, trainingY, verbose=False)
-    # print("Training Accuracy: {:.4f}".format(accuracy))
+    model = Model(sequence_input, preds)
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
 
-    print("\nFinished up to this point")  # TODO: Remove
+    model.fit(tweets, labels, batch_size=128, epochs=10, validation_data=(testX, testY))
 
-    # print(word2Vec.wv.most_similar('good'))
-    # print(trainingData['Sentiment'].value_counts())
+    model.save('model.h5')
 
 
 if __name__ == "__main__":

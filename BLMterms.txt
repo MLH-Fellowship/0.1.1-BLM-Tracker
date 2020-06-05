@@ -1,8 +1,8 @@
-﻿#BlackLivesMatter
+﻿BlackLivesMatter
 Black
 Lives
 Matter
-BLM (with and without hashtag)
+BLM
 Oppressed
 Oppression
 Minority
@@ -14,7 +14,7 @@ Black Out Tuesday (with and without hashtag)
 Black Out Day (with and without hashtag)
 Blackout
 Black square
-#pausetheshow
+pausetheshow
 Black businesses
 Black men
 Black women
@@ -44,9 +44,9 @@ Fight with
 Change
 Action
 Justice
-Justice For Floyd (with and without hashtag)
-Justice For Breonna (with and without hashtag)
-Justice For Ahmaud (with and without hashtag)
+Justice For Floyd
+Justice For Breonna
+Justice For Ahmaud
 Movement
 Human rights
 Human rights movement
@@ -56,7 +56,7 @@ Silent
 George Floyd
 George Floyd
 Gentle Giant
-I can’t breathe
+I cant breathe
 Derek Chauvin
 Thomas Lane
 J.A. Kueng
@@ -180,4 +180,3 @@ Prison Industrial Complex
 Commonly Used Phrases
 Silence is Violence
 Violence is the language of the oppressed
-*
