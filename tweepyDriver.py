@@ -29,15 +29,11 @@ tweetCounter = 0
 client = MongoClient('mongodb://localhost:27017')
 db = client.tweetDatabase
 col = db.tweetCollection
-#db.command('convertToCapped', 'tweetCollection', size=5242880)
-# print("connected to MongoDB:", client["HOST"])
 
 class MyStreamListener(tweepy.StreamListener):
 
     def on_data(self, data):
         global tweetCounter
-        sys.stdout.write("\rTweet #: {}".format(trialCounter))
-        sys.stdout.flush()
         obj = json.loads(data)
         location = locationExists(obj)
         if location and isEnglish(obj):
