@@ -28,10 +28,10 @@ def fetch_tweets():
     # print(item['place']['bounding_box']['coordinates'][0][0][0])
     i = {'lat': item['place']['bounding_box']['coordinates'][0][0][0], 'long': item['place']['bounding_box']['coordinates'][0][0][1]}
     data.append(i)
-  
+
   print(data)
-  
-  return render_template('test.html', data=data)
+
+  return render_template('test.html', data=data)    # TODO: replace "test.html" with correct html file name
 
 # @app.before_first_request(fetch_tweets)
 # @app.route("/")
