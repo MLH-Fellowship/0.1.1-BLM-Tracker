@@ -11,6 +11,9 @@ from keras.layers import Conv1D, MaxPooling1D, Embedding
 from keras.models import Model
 from keras.initializers import Constant
 
+import tensorflow as tf
+import keras.backend.tensorflow_backend as tfback
+
 from tqdm import tqdm
 tqdm.pandas()
 
@@ -20,31 +23,31 @@ tokenizer = TweetTokenizer()
 from string import digits
 remove_digits = str.maketrans('', '', digits)
 
-BASE_DIR = 'sentimentAnalysisData'
-MAX_SEQUENCE_LENGTH = 1000
-MAX_NUM_WORDS = 20000
-EMBEDDING_DIM = 100
-VALIDATION_SPLIT = 0.2
+dataFolder = 'sentimentAnalysisData'
+maxTweetLength = 1000
+maxWordCount = 20000
+dimensionCount = 100
+trainingValidationSplit = 0.2
 
 dataFile = "testData.csv"  # TODO: Change
 embeddingsFile = "glove.6B.100d.txt"
 modelName = 'model.h5'
 
-embeddings_index = dict()
-data = pd.read_csv((os.path.join(BASE_DIR, dataFile)), encoding='latin-1')
+embeddingsIndex = dict()
+data = pd.read_csv((os.path.join(dataFolder, dataFile)), encoding='latin-1')
 
 
 def generateEmbeddingsIndex():
-    global embeddings_index
+    global embeddingsIndex
     print("\nGenerating embeddings index:")
     wordVectorCount = 0
-    with open(os.path.join(BASE_DIR, embeddingsFile)) as f:
+    with open(os.path.join(dataFolder, embeddingsFile)) as f:
         wordVectorCount += len(f.readlines())
-    with open(os.path.join(BASE_DIR, embeddingsFile)) as f:
+    with open(os.path.join(dataFolder, embeddingsFile)) as f:
         for line in tqdm(f, total=wordVectorCount):
             word, vector = line.split(maxsplit=1)
             vector = np.fromstring(vector, 'f', sep=' ')
-            embeddings_index[word] = vector
+            embeddingsIndex[word] = vector
     print('Found {} word vectors'.format(wordVectorCount))
 
 
@@ -88,18 +91,21 @@ def postProcess():
 
 
 def tokenizeSequences(texts, labels):
-    global data
+    global data, maxTweetLength
     print('\nScrubbed {} texts'.format(len(texts)))
 
     # Tokenizing tweets
-    kerasTokenizer = Tokenizer(num_words=MAX_NUM_WORDS)
+    kerasTokenizer = Tokenizer(num_words=maxWordCount)
     kerasTokenizer.fit_on_texts(texts)
 
     # Converting tweets to sequences
     sequences = kerasTokenizer.texts_to_sequences(texts)
 
+    print((max(list(map(len, sequences)))), maxTweetLength)
+    # maxTweetLength = min((max(list(map(len, sequences)))), maxTweetLength)
+
     # Padding sequences to make them equal length
-    data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
+    data = pad_sequences(sequences, maxlen=maxTweetLength)
 
     wordCount = kerasTokenizer.word_index
     print('Found {} unique tokens'.format(len(wordCount)))
@@ -118,58 +124,66 @@ def prepareKerasData(labels):
     np.random.shuffle(indices)
     data = data[indices]
     labels = labels[indices]
-    num_validation_samples = int(VALIDATION_SPLIT * data.shape[0])
+    validationSampleCount = int(trainingValidationSplit * data.shape[0])
 
     # Splitting data into inputs and outputs
-    x_train = data[:-num_validation_samples]
-    y_train = labels[:-num_validation_samples]
-    x_val = data[-num_validation_samples:]
-    y_val = labels[-num_validation_samples:]
-    return x_train, y_train, x_val, y_val
+    trainingX = data[:-validationSampleCount]
+    trainingY = labels[:-validationSampleCount]
+    validationX = data[-validationSampleCount:]
+    validationY = labels[-validationSampleCount:]
+    return trainingX, trainingY, validationX, validationY
 
 
-def generateEmbeddingsMatrix(word_index):
+def generateEmbeddingsMatrix(wordDict):
     print('\nPreparing embedding matrix.')
-    num_words = min(MAX_NUM_WORDS, len(word_index) + 1)
-    embedding_matrix = np.zeros((num_words, EMBEDDING_DIM))
-    for word, i in word_index.items():
-        if i >= MAX_NUM_WORDS:
+    uniqueWordCount = min(maxWordCount, len(wordDict) + 1)
+    embeddingsMatrix = np.zeros((uniqueWordCount, dimensionCount))
+    for word, i in wordDict.items():
+        if i >= maxWordCount:
             continue
-        embedding_vector = embeddings_index.get(word)
-        if embedding_vector is not None:
-            embedding_matrix[i] = embedding_vector
-    return num_words, embedding_matrix
+        embeddingsVector = embeddingsIndex.get(word)
+        if embeddingsVector is not None:
+            embeddingsMatrix[i] = embeddingsVector
+    return uniqueWordCount, embeddingsMatrix
+
+
+def getAvailableGPUS():
+    if tfback._LOCAL_DEVICES is None:
+        devices = tf.config.list_logical_devices()
+        tfback._LOCAL_DEVICES = [x.name for x in devices]
+    return [x for x in tfback._LOCAL_DEVICES if 'device:gpu' in x.lower()]
 
 
 def main():
+    tfback._get_available_gpus = getAvailableGPUS
     generateEmbeddingsIndex()
     ingestData()
     texts, labels = postProcess()
-    word_index, labels = tokenizeSequences(texts, labels)
-    x_train, y_train, x_val, y_val = prepareKerasData(labels)
-    num_words, embedding_matrix = generateEmbeddingsMatrix(word_index)
+    wordDict, labels = tokenizeSequences(texts, labels)
+    trainingX, trainingY, validationX, validationY = prepareKerasData(labels)
+    uniqueWordCount, embeddingsMatrix = generateEmbeddingsMatrix(wordDict)
 
-    embedding_layer = Embedding(num_words, EMBEDDING_DIM, embeddings_initializer=Constant(embedding_matrix), input_length=MAX_SEQUENCE_LENGTH, trainable=False)
+    embeddingLayer = Embedding(uniqueWordCount, dimensionCount, embeddings_initializer=Constant(embeddingsMatrix), input_length=maxTweetLength, trainable=False)
 
-    # train a 1D convnet with global maxpooling
-    sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
-    embedded_sequences = embedding_layer(sequence_input)
-    x = Conv1D(128, 5, activation='relu')(embedded_sequences)
+    sequenceInput = Input(shape=(maxTweetLength,), dtype='int32')
+    embeddedSequences = embeddingLayer(sequenceInput)
+    x = Conv1D(128, 5, activation='relu')(embeddedSequences)
     x = MaxPooling1D(5)(x)
     x = Conv1D(128, 5, activation='relu')(x)
     x = MaxPooling1D(5)(x)
     x = Conv1D(128, 5, activation='relu')(x)
     x = GlobalMaxPooling1D()(x)
     x = Dense(128, activation='relu')(x)
-    preds = Dense(3, activation='softmax')(x)
+    sentimentClassifier = Dense(3, activation='softmax')(x)
 
-    model = Model(sequence_input, preds)
+    model = Model(sequenceInput, sentimentClassifier)
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
 
     print("\nTraining model: ")
-    model.fit(x_train, y_train, batch_size=128, epochs=15, validation_data=(x_val, y_val))
+    model.fit(trainingX, trainingY, batch_size=128, epochs=15, validation_data=(validationX, validationY))
 
-    model.save(modelName)
+    # TODO: Uncomment
+    # model.save(modelName)
     print("\nModel file saved as {}, training complete\n".format(modelName))
 
 
