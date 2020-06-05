@@ -28,7 +28,6 @@ VALIDATION_SPLIT = 0.2
 
 dataFile = "testData.csv"  # TODO: Change
 embeddingsFile = "glove.6B.100d.txt"
-embeddingsIndexFile = "embeddingsIndex.pkl"
 
 embeddings_index = dict()
 data = pd.read_csv((os.path.join(BASE_DIR, dataFile)), encoding='latin-1')
@@ -42,6 +41,7 @@ def generateEmbeddingsIndex():
             word, coefs = line.split(maxsplit=1)
             coefs = np.fromstring(coefs, 'f', sep=' ')
             embeddings_index[word] = coefs
+    print('\nFound %s word vectors.' % len(embeddings_index))
 
 
 def ingestData():
@@ -91,36 +91,39 @@ def tokenizeSequences(texts, labels):
     data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
     wordCount = kerasTokenizer.word_index
     print('Found %s unique tokens.' % len(wordCount))
-    return wordCount
+    labels = to_categorical(np.asarray(labels))
+    print('Shape of data tensor:', data.shape)
+    print('Shape of label tensor:', labels.shape)
+    return wordCount, labels
+
+
+def prepareKerasData(labels):
+    global data
+    # split the data into a training set and a validation set
+    indices = np.arange(data.shape[0])
+    np.random.shuffle(indices)
+    data = data[indices]
+    labels = labels[indices]
+    num_validation_samples = int(VALIDATION_SPLIT * data.shape[0])
+
+    x_train = data[:-num_validation_samples]
+    y_train = labels[:-num_validation_samples]
+    x_val = data[-num_validation_samples:]
+    y_val = labels[-num_validation_samples:]
+    return x_train, y_train, x_val, y_val
 
 ######################################################
 
 
 generateEmbeddingsIndex()
-print('\nFound %s word vectors.' % len(embeddings_index))
 print('\nProcessing text dataset')
 ingestData()
 texts, labels = postProcess()
-word_index = tokenizeSequences(texts, labels)
+word_index, labels = tokenizeSequences(texts, labels)
+x_train, y_train, x_val, y_val = prepareKerasData(labels)
+num_words, embedding_matrix = generateEmbeddingsMatrix(word_index)
 
 ######################################################
-
-
-labels = to_categorical(np.asarray(labels))
-print('Shape of data tensor:', data.shape)
-print('Shape of label tensor:', labels.shape)
-
-# split the data into a training set and a validation set
-indices = np.arange(data.shape[0])
-np.random.shuffle(indices)
-data = data[indices]
-labels = labels[indices]
-num_validation_samples = int(VALIDATION_SPLIT * data.shape[0])
-
-x_train = data[:-num_validation_samples]
-y_train = labels[:-num_validation_samples]
-x_val = data[-num_validation_samples:]
-y_val = labels[-num_validation_samples:]
 
 print('Preparing embedding matrix.')
 
