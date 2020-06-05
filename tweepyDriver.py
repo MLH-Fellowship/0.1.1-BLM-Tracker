@@ -20,6 +20,10 @@ for module in importModules:
             exception, module))
         quit()
 
+from urllib3.exceptions import ProtocolError
+from utils import *
+
+tweetCounter = 0
 
 # Connect to MongoDB
 client = MongoClient('mongodb://localhost:27017')
@@ -28,30 +32,21 @@ col = db.tweetCollection
 #db.command('convertToCapped', 'tweetCollection', size=5242880)
 # print("connected to MongoDB:", client["HOST"])
 
-tweetCounter = 0
-tweetLimit = 3
-trialCounter = 0
-
-
 class MyStreamListener(tweepy.StreamListener):
 
     def on_data(self, data):
-        global trialCounter, tweetCounter
-        trialCounter += 1
+        global tweetCounter
         sys.stdout.write("\rTweet #: {}".format(trialCounter))
         sys.stdout.flush()
         obj = json.loads(data)
         location = locationExists(obj)
-        if location:
+        if location and isEnglish(obj):
             coordinates = locationIsValid(location)
             if coordinates:
-                # if coordinatesInBounds(obj["place"]["bounding_box"]["coordinates"][0][0]):
+                obj['Sentiment'] = getSentiment(obj)
                 store_tweet(obj, col)
-
                 tweetCounter += 1
                 print("Location Validated! {}".format(tweetCounter))
-                if tweetCounter == tweetLimit:
-                    sys.exit(0)
 
     def on_status(self, status):
         print(status.text)

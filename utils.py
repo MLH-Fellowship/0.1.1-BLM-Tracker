@@ -1,10 +1,9 @@
 #
 # Created by Parthiv Chigurupati, Stella Wang, and Amir Yalamov
 #
+from __future__ import print_function
 
-
-from apiKeys import *
-importModules = ['sys', 'tweepy', 'json', 'googlemaps', 'time']
+importModules = ['sys', 'tweepy', 'json', 'googlemaps', 'time', 'langdetect']
 for module in importModules:
     try:
         globals()[module] = __import__(module)
@@ -17,7 +16,23 @@ for module in importModules:
             exception, module))
         quit()
 
+import numpy as np
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+from keras.models import load_model
+
+
+from nltk.tokenize import TweetTokenizer
+tokenizer = TweetTokenizer()
+
+from string import digits
+remove_digits = str.maketrans('', '', digits)
+
+from apiKeys import *
+
+
 gMaps = googlemaps.Client(key=googlemaps_api_key)
+langdetect.DetectorFactory.seed = 0
 
 rateLimitWaitTime = 1
 filterTerms = list()
@@ -25,6 +40,70 @@ termFileName = "BLMTerms.txt"
 
 topRight = [49.123606, -65.688553]
 bottomLeft = [24.349138, -124.923975]
+maxSentiment = 9
+
+dataFolder = 'sentimentAnalysis/sentimentAnalysisData'
+maxTweetLength = 1000
+maxWordCount = 20000
+dimensionCount = 100
+trainingValidationSplit = 0.2
+
+dataFile = "trainingData.csv"
+embeddingsFile = "glove.6B.100d.txt"
+modelName = 'model.h5'
+invalidTweet = 'Invalid tweet'
+
+model = load_model('sentimentAnalysis/model.h5')
+
+
+def tokenFilter(token):
+    return not (token.startswith('@') or token.startswith('http') or not token.isalpha())
+
+
+def tweetTokenizer(tweet):
+    try:
+        tokens = [token.translate(remove_digits).replace('#', '') for token in tokenizer.tokenize(tweet)]
+        return ' '.join(list(filter(tokenFilter, tokens)))
+    except:
+        return invalidTweet
+
+
+def kerasTweet(tweet):
+    kerasTokenizer = Tokenizer(num_words=maxWordCount)
+    kerasTokenizer.fit_on_texts([tweet])
+    sequences = kerasTokenizer.texts_to_sequences([tweet])
+    tweet = pad_sequences(sequences, maxlen=maxTweetLength)
+    return tweet
+
+
+def calculateSentiment(tweetText):
+    tokenizedTweet = tweetTokenizer(tweetText)
+    if tokenizedTweet == invalidTweet:
+        return 0
+    tweet = kerasTweet(tokenizedTweet)
+    sentiment = model.predict(np.array(tweet))
+    return sentiment[0]
+
+
+def getSentiment(tweet):
+    tweetText = tweet['extended_tweet']['full_text'] if tweet['truncated'] else tweet['text']
+    sentiment = calculateSentiment(tweetText).tolist()
+
+    # Use sentiment analysis to get a base sentiment
+    baseSentiment = 4 - sentiment.index(max(sentiment))
+
+    # Use interactivity to calculate sentiment scalar
+    quoteCount = tweet['quote_count']
+    replyCount = tweet['reply_count']
+    retweetCount = tweet['retweet_count']
+    favoriteCount = tweet['favorite_count']
+    sentimentScalar = (favoriteCount + retweetCount * 3 + replyCount * 1.5 + quoteCount * 4.5) / 100000
+
+    finalSentiment = min(maxSentiment, max(baseSentiment * sentimentScalar, baseSentiment))
+    return finalSentiment
+
+
+#########################################################################
 
 
 def loadTerms():
@@ -42,7 +121,6 @@ def rateLimitWait():
 
 
 def locationExists(jsonOBJ):
-    # print(json.dumps(jsonOBJ, indent=4))
     if "limit" in jsonOBJ:
         rateLimitWait()
         return False
@@ -57,6 +135,22 @@ def locationExists(jsonOBJ):
 
 def coordinatesInBounds(coordinates):
     return topRight[0] >= coordinates[1] >= bottomLeft[0] and bottomLeft[1] >= coordinates[0] >= topRight[1]
+
+
+def isEnglish(jsonOBJ):
+    if jsonOBJ['lang'] == 'en':
+        return True
+    tweetText = jsonOBJ['extended_tweet']['full_text'] if jsonOBJ['truncated'] else jsonOBJ['text']
+    if langdetect.detect(tweetText) == 'en':
+        return True
+    confidences = langdetect.detect_langs(tweetText)
+    for confidence in confidences:
+        if confidence.prob > 95:  # 95% is two standard deviations on a normal curve
+            if confidence.lang == 'en':
+                return True
+        else:
+            break
+    return False
 
 
 def locationIsValid(location):
