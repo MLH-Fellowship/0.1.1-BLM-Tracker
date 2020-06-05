@@ -91,7 +91,7 @@ def postProcess():
 
 
 def tokenizeSequences(texts, labels):
-    global data, maxTweetLength
+    global data
     print('\nScrubbed {} texts'.format(len(texts)))
 
     # Tokenizing tweets
@@ -100,9 +100,6 @@ def tokenizeSequences(texts, labels):
 
     # Converting tweets to sequences
     sequences = kerasTokenizer.texts_to_sequences(texts)
-
-    print((max(list(map(len, sequences)))), maxTweetLength)
-    # maxTweetLength = min((max(list(map(len, sequences)))), maxTweetLength)
 
     # Padding sequences to make them equal length
     data = pad_sequences(sequences, maxlen=maxTweetLength)

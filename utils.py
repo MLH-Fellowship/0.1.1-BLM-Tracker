@@ -1,7 +1,7 @@
 #
 # Created by Parthiv Chigurupati, Stella Wang, and Amir Yalamov
 #
-
+from __future__ import print_function
 
 importModules = ['sys', 'tweepy', 'json', 'googlemaps', 'time', 'langdetect']
 for module in importModules:
@@ -14,11 +14,23 @@ for module in importModules:
         print("{} exception was thrown when trying to import '{}'".format(exception, module))
         quit()
 
+import os
+import numpy as np
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+from keras.models import load_model
+
+
+from nltk.tokenize import TweetTokenizer
+tokenizer = TweetTokenizer()
+
+from string import digits
+remove_digits = str.maketrans('', '', digits)
+
 from apiKeys import *
 
 gMaps = googlemaps.Client(key=googlemaps_api_key)
 langdetect.DetectorFactory.seed = 0
-
 
 rateLimitWaitTime = 1
 filterTerms = list()
@@ -26,6 +38,51 @@ termFileName = "BLMTerms.txt"
 
 topRight = [49.123606, -65.688553]
 bottomLeft = [24.349138, -124.923975]
+
+dataFolder = 'sentimentAnalysis/sentimentAnalysisData'
+maxTweetLength = 1000
+maxWordCount = 20000
+dimensionCount = 100
+trainingValidationSplit = 0.2
+
+dataFile = "trainingData.csv"
+embeddingsFile = "glove.6B.100d.txt"
+modelName = 'model.h5'
+invalidTweet = 'Invalid tweet'
+
+model = load_model('sentimentAnalysis/model.h5')
+
+
+def tokenFilter(token):
+    return not (token.startswith('@') or token.startswith('http') or not token.isalpha())
+
+
+def tweetTokenizer(tweet):
+    try:
+        tokens = [token.translate(remove_digits).replace('#', '') for token in tokenizer.tokenize(tweet)]
+        return ' '.join(list(filter(tokenFilter, tokens)))
+    except:
+        return invalidTweet
+
+
+def kerasTweet(tweet):
+    kerasTokenizer = Tokenizer(num_words=maxWordCount)
+    kerasTokenizer.fit_on_texts([tweet])
+    sequences = kerasTokenizer.texts_to_sequences([tweet])
+    tweet = pad_sequences(sequences, maxlen=maxTweetLength)
+    return tweet
+
+
+def getSentiment(tweetText):
+    tokenizedTweet = tweetTokenizer(tweetText)
+    if tokenizedTweet == invalidTweet:
+        return -1
+    print(tokenizedTweet)
+    tweet = kerasTweet(tokenizedTweet)
+    sentiment = model.predict(np.array(tweet))
+    print(sentiment)
+    return sentiment
+
 
 
 def loadTerms():
