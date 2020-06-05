@@ -92,8 +92,10 @@ def tokenizeSequences(texts, labels):
     wordCount = kerasTokenizer.word_index
     print('Found %s unique tokens.' % len(wordCount))
     labels = to_categorical(np.asarray(labels))
+    # TODO: Remove
     print('Shape of data tensor:', data.shape)
     print('Shape of label tensor:', labels.shape)
+    ###
     return wordCount, labels
 
 
@@ -112,6 +114,19 @@ def prepareKerasData(labels):
     y_val = labels[-num_validation_samples:]
     return x_train, y_train, x_val, y_val
 
+
+def generateEmbeddingsMatrix(word_index):
+    print('\nPreparing embedding matrix.')
+    num_words = min(MAX_NUM_WORDS, len(word_index) + 1)
+    embedding_matrix = np.zeros((num_words, EMBEDDING_DIM))
+    for word, i in word_index.items():
+        if i >= MAX_NUM_WORDS:
+            continue
+        embedding_vector = embeddings_index.get(word)
+        if embedding_vector is not None:
+            embedding_matrix[i] = embedding_vector
+    return num_words, embedding_matrix
+
 ######################################################
 
 
@@ -124,18 +139,6 @@ x_train, y_train, x_val, y_val = prepareKerasData(labels)
 num_words, embedding_matrix = generateEmbeddingsMatrix(word_index)
 
 ######################################################
-
-print('Preparing embedding matrix.')
-
-# prepare embedding matrix
-num_words = min(MAX_NUM_WORDS, len(word_index) + 1)
-embedding_matrix = np.zeros((num_words, EMBEDDING_DIM))
-for word, i in word_index.items():
-    if i >= MAX_NUM_WORDS:
-        continue
-    embedding_vector = embeddings_index.get(word)
-    if embedding_vector is not None:
-        embedding_matrix[i] = embedding_vector
 
 embedding_layer = Embedding(num_words, EMBEDDING_DIM, embeddings_initializer=Constant(embedding_matrix), input_length=MAX_SEQUENCE_LENGTH, trainable=False)
 
