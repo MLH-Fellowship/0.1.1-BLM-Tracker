@@ -14,7 +14,6 @@ for module in importModules:
         print("{} exception was thrown when trying to import '{}'".format(exception, module))
         quit()
 
-import os
 import numpy as np
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
@@ -84,8 +83,8 @@ def calculateSentiment(tweetText):
 
 
 def getSentiment(tweet):
-    tweetText = tweet['extended_tweet']['full_text'] if tweet['truncated'] else tweet['quoted_status']['text']
-    sentiment = calculateSentiment(tweetText)
+    tweetText = tweet['extended_tweet']['full_text'] if tweet['truncated'] else tweet['text']
+    sentiment = calculateSentiment(tweetText).tolist()
 
     # Use sentiment analysis to get a base sentiment
     baseSentiment = 4 - sentiment.index(max(sentiment))
@@ -100,6 +99,8 @@ def getSentiment(tweet):
     finalSentiment = min(maxSentiment, max(baseSentiment * sentimentScalar, baseSentiment))
     return finalSentiment
 
+
+#########################################################################
 
 
 def loadTerms():
@@ -136,7 +137,7 @@ def coordinatesInBounds(coordinates):
 def isEnglish(jsonOBJ):
     if jsonOBJ['lang'] == 'en':
         return True
-    tweetText = jsonOBJ['extended_tweet']['full_text'] if jsonOBJ['truncated'] else jsonOBJ['quoted_status']['text']
+    tweetText = jsonOBJ['extended_tweet']['full_text'] if jsonOBJ['truncated'] else jsonOBJ['text']
     if langdetect.detect(tweetText) == 'en':
         return True
     confidences = langdetect.detect_langs(tweetText)

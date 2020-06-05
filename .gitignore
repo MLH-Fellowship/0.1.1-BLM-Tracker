@@ -6,7 +6,7 @@ test.py
 test.json
 test.txt
 sentimentAnalysisData/
-*.h5
+sentimentTweets.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
