@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 import os
-import pickle
 import numpy as np
 import pandas as pd
 from keras.preprocessing.text import Tokenizer
@@ -30,55 +29,37 @@ MAX_NUM_WORDS = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
 
-testDataFile = "testData.csv"
+dataFile = "testData.csv"  # TODO: Change
 embeddingsFile = "glove.6B.100d.txt"
 embeddingsIndexFile = "embeddingsIndex.pkl"
 
 embeddings_index = dict()
+data = pd.read_csv((os.path.join(BASE_DIR, dataFile)), encoding='latin-1')
 
 
-def generateEmbeddingsIndex(generatePickle=False):
+def generateEmbeddingsIndex():
     global embeddings_index
-    if generatePickle:
-        print("\nGenerating embeddings index:")
-        with open(os.path.join(BASE_DIR, embeddingsFileName)) as f:
-            for line in tqdm(f, total=400000):
-                word, coefs = line.split(maxsplit=1)
-                coefs = np.fromstring(coefs, 'f', sep=' ')
-                embeddings_index[word] = coefs
-        output = open(embeddings_index, 'wb')
-        pickle.dump(embeddings_index, output)
-        output.close()
-    else:
-        print("\nLoading embeddings index")
-        pklFile = open(embeddings_index, 'rb')
-        embeddingsIndex = pickle.load(pklFile)
-        pklFile.close()
+    print("\nGenerating embeddings index:")
+    with open(os.path.join(BASE_DIR, embeddingsFileName)) as f:
+        for line in tqdm(f, total=400000):
+            word, coefs = line.split(maxsplit=1)
+            coefs = np.fromstring(coefs, 'f', sep=' ')
+            embeddings_index[word] = coefs
 
 
-constructEmbeddingsIndex()
+def ingestData():
+    global data
 
-print('Found %s word vectors.' % len(embeddings_index))
+    # Appending top row to the bottom to add column labels to data
+    topRow = pd.DataFrame(data.iloc[0])
+    data.append(topRow, ignore_index=True)
+    data.columns = ['Sentiment', 'id', 'time', 'client', 'user', 'Tweet']
 
-# second, prepare text samples and their labels
-print('Processing text dataset')
+    # Drop irrelevant columns
+    data.drop(['id', 'time', 'client', 'user'], axis=1, inplace=True)
 
-labels_index = {}  # dictionary mapping label name to numeric id
-
-################################################
-
-data = pd.read_csv(testDataFile, encoding='latin-1')
-
-# Appending top row to the bottom to add column labels to data
-topRow = pd.DataFrame(data.iloc[0])
-data.append(topRow, ignore_index=True)
-data.columns = ['Sentiment', 'id', 'time', 'client', 'user', 'Tweet']
-
-# Drop irrelevant columns
-data.drop(['id', 'time', 'client', 'user'], axis=1, inplace=True)
-
-# Scale down sentiment values and convert them to ints from strings
-data.replace({'Sentiment': {4: 2, 2: 1, 0: 0}}, inplace=True)
+    # Scale down sentiment values and convert them to ints from strings
+    data.replace({'Sentiment': {4: 2, 2: 1, 0: 0}}, inplace=True)
 
 
 def tokenFilter(token):
@@ -93,26 +74,34 @@ def tweetTokenizer(tweet):
         return 'Invalid tweet'
 
 
-print("\nTokenizing and scrubbing tweets:")
-data['tokens'] = data['Tweet'].progress_map(tweetTokenizer)
-data = data[data.tokens != 'Invalid tweet']
-data.reset_index(inplace=True)
-data.drop('index', inplace=True, axis=1)
+def postProcess():
+    global data
+    print("\nTokenizing and scrubbing tweets:")
+    data['tokens'] = data['Tweet'].progress_map(tweetTokenizer)
+    data = data[data.tokens != 'Invalid tweet']
+    data.reset_index(inplace=True)
+    data.drop('index', inplace=True, axis=1)
 
+######################################################
+
+
+generateEmbeddingsIndex()
+print('\nFound %s word vectors.' % len(embeddings_index))
+print('\nProcessing text dataset')
+ingestData()
+postProcess()
 texts = data['tokens'].to_list()
 labels = data['Sentiment'].to_list()
+print('Found %s texts' % len(texts))
 
-################################################
-
-
-print('Found %s texts.' % len(texts))
+######################################################
 
 # finally, vectorize the text samples into a 2D integer tensor
-tokenizer = Tokenizer(num_words=MAX_NUM_WORDS)
-tokenizer.fit_on_texts(texts)
-sequences = tokenizer.texts_to_sequences(texts)
+kerasTokenizer = Tokenizer(num_words=MAX_NUM_WORDS)
+kerasTokenizer.fit_on_texts(texts)
+sequences = kerasTokenizer.texts_to_sequences(texts)
 
-word_index = tokenizer.word_index
+word_index = kerasTokenizer.word_index
 print('Found %s unique tokens.' % len(word_index))
 
 data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
@@ -143,16 +132,9 @@ for word, i in word_index.items():
         continue
     embedding_vector = embeddings_index.get(word)
     if embedding_vector is not None:
-        # words not found in embedding index will be all-zeros.
         embedding_matrix[i] = embedding_vector
 
-# load pre-trained word embeddings into an Embedding layer
-# note that we set trainable = False so as to keep the embeddings fixed
-embedding_layer = Embedding(num_words,
-                            EMBEDDING_DIM,
-                            embeddings_initializer=Constant(embedding_matrix),
-                            input_length=MAX_SEQUENCE_LENGTH,
-                            trainable=False)
+embedding_layer = Embedding(num_words, EMBEDDING_DIM, embeddings_initializer=Constant(embedding_matrix), input_length=MAX_SEQUENCE_LENGTH, trainable=False)
 
 print('Training model.')
 
@@ -178,4 +160,4 @@ model.fit(x_train, y_train,
           epochs=10,
           validation_data=(x_val, y_val))
 
-# model.save('model.h5')  # TODO: Remove commment
+model.save('model.h5')
