@@ -21,9 +21,6 @@ from string import digits
 remove_digits = str.maketrans('', '', digits)
 
 BASE_DIR = 'sentimentAnalysisData'
-embeddingsFileName = 'glove.6B.100d.txt'
-embeddingsIndexFileName = 'glove.6B.100d.txt'
-TEXT_DATA_DIR = os.path.join(BASE_DIR, '20_newsgroup')
 MAX_SEQUENCE_LENGTH = 1000
 MAX_NUM_WORDS = 20000
 EMBEDDING_DIM = 100
@@ -40,7 +37,7 @@ data = pd.read_csv((os.path.join(BASE_DIR, dataFile)), encoding='latin-1')
 def generateEmbeddingsIndex():
     global embeddings_index
     print("\nGenerating embeddings index:")
-    with open(os.path.join(BASE_DIR, embeddingsFileName)) as f:
+    with open(os.path.join(BASE_DIR, embeddingsFile)) as f:
         for line in tqdm(f, total=400000):
             word, coefs = line.split(maxsplit=1)
             coefs = np.fromstring(coefs, 'f', sep=' ')
@@ -81,6 +78,20 @@ def postProcess():
     data = data[data.tokens != 'Invalid tweet']
     data.reset_index(inplace=True)
     data.drop('index', inplace=True, axis=1)
+    return data['tokens'].to_list(), data['Sentiment'].to_list()
+
+
+def tokenizeSequences(texts, labels):
+    global data
+    print('Found %s texts' % len(texts))
+    # finally, vectorize the text samples into a 2D integer tensor
+    kerasTokenizer = Tokenizer(num_words=MAX_NUM_WORDS)
+    kerasTokenizer.fit_on_texts(texts)
+    sequences = kerasTokenizer.texts_to_sequences(texts)
+    data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
+    wordCount = kerasTokenizer.word_index
+    print('Found %s unique tokens.' % len(wordCount))
+    return wordCount
 
 ######################################################
 
@@ -89,22 +100,11 @@ generateEmbeddingsIndex()
 print('\nFound %s word vectors.' % len(embeddings_index))
 print('\nProcessing text dataset')
 ingestData()
-postProcess()
-texts = data['tokens'].to_list()
-labels = data['Sentiment'].to_list()
-print('Found %s texts' % len(texts))
+texts, labels = postProcess()
+word_index = tokenizeSequences(texts, labels)
 
 ######################################################
 
-# finally, vectorize the text samples into a 2D integer tensor
-kerasTokenizer = Tokenizer(num_words=MAX_NUM_WORDS)
-kerasTokenizer.fit_on_texts(texts)
-sequences = kerasTokenizer.texts_to_sequences(texts)
-
-word_index = kerasTokenizer.word_index
-print('Found %s unique tokens.' % len(word_index))
-
-data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
 
 labels = to_categorical(np.asarray(labels))
 print('Shape of data tensor:', data.shape)
