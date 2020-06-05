@@ -29,7 +29,7 @@ maxWordCount = 20000
 dimensionCount = 100
 trainingValidationSplit = 0.2
 
-dataFile = "testData.csv"  # TODO: Change
+dataFile = "trainingData.csv"
 embeddingsFile = "glove.6B.100d.txt"
 modelName = 'model.h5'
 
@@ -182,8 +182,7 @@ def main():
     print("\nTraining model: ")
     model.fit(trainingX, trainingY, batch_size=128, epochs=15, validation_data=(validationX, validationY))
 
-    # TODO: Uncomment
-    # model.save(modelName)
+    model.save(modelName)
     print("\nModel file saved as {}, training complete\n".format(modelName))
 
 
