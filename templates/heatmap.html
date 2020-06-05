@@ -5,22 +5,15 @@
   <head>
     <!-- import jQuery -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <style>
-      #map {
-        height: 80%;
-      }
-      html, body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   </head>
   <body>
+    <h1>BLM Tracker</h1>
     <div id="map"></div>
     <form action="/refresh/" method="post">
       <button name="refresh" type="submit">Refresh</button>
     </form>
+    <h6>Created by Parthiv Chigurupati, Stella Wang, and Amir Yalamov</h6>
     <script>
       //auto refresh page every t seconds = 10 minutes
       const t = 30; 
