@@ -21,7 +21,15 @@
     <div id="map"></div>
     <script>
       // pass in 'data' from flask and convert to a JSON form
-      var coordinatesData = '{{ data }}';
+      var coordinatesData = '{{ data|tojson }}';
+      console.log(coordinatesData);
+
+      var coordinatesObj = JSON.parse(coordinatesData);
+      console.log(coordinatesObj)
+      
+      // for(var i = 0; i < 7; i++) {
+      //   console.log(coordinatesObj[i]);
+      // }
 
       var map;
       function initMap() {
@@ -40,12 +48,19 @@
 
       }
 
+      // results I guess is from document, document (and hence results) in this case is the actual GeoJSON file
+      // need to modify code above
       function eqfeed_callback(results) {
         var heatmapData = [];
         // features.length is the amount of locations in the geoJSON file
         // can modify code to fit array length of 'data' from flask
         for (var i = 0; i < results.features.length; i++) {
-          var latLng = new google.maps.LatLng(results.lat, results.long);
+          // coords get coordinates (lat. and long.) from results, which comes from document
+          // for example, the line below will get the coordinates from a location entry that has the field "geometry":
+          // ..., "geometry":{"type":"Point","coordinates":[-178.3725,-20.753,544.19]}, ...
+          var coords = results.features[i].geometry.coordinates;
+          // LatLng basically just takes a lat. and long., here it gets it from the coords var
+          var latLng = new google.maps.LatLng(coords[1], coords[0]);
           // from this line below its kinda obvious, its basically the actual heat map being created
           heatmapData.push(latLng);
         }
@@ -57,7 +72,7 @@
       }
     </script>
     <script async defer
-        src="https://maps.googleapis.com/maps/api/js?key=API-KEY-HERE&libraries=visualization&callback=initMap">
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCS1pv3UNX5dWNp5o2bJm6q2j3iU33hbYQ&libraries=visualization&callback=initMap">
     </script>
   </body>
 </html>

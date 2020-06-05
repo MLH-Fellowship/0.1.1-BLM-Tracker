@@ -22,7 +22,13 @@
     <script>
       // pass in 'data' from flask and convert to a JSON form
       var coordinatesData = '{{ data|tojson }}';
-      console.log(coordinatesData)
+      console.log(coordinatesData);
+      const coordinatesObj = JSON.parse(coordinatesData);
+      console.log(coordinatesObj.array);
+      
+      // for(var i = 0; i < coordinatesObj.array.length(); i++) {
+      //   console.log(coordinatesObj[i]);
+      // }
 
       var map;
       function initMap() {

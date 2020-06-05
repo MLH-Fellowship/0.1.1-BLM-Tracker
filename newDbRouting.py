@@ -15,7 +15,7 @@ app = Flask(__name__)
 def fetch_tweets():
   client = MongoClient('mongodb://localhost:27017')
   db = client.tweetDatabase
-  coll = db.tweetCollection
+  coll = db.testCol
 
   # goes through tweets and adds lat and long of tweets into 'data' so 'data' can later be passed into the html file
   docs = coll.find()
@@ -26,12 +26,18 @@ def fetch_tweets():
   # iterate through db collection and add each document's latitude and longitude
   for item in docs:
     # print(item['place']['bounding_box']['coordinates'][0][0][0])
-    i = {'lat': item['place']['bounding_box']['coordinates'][0][0][0], 'long': item['place']['bounding_box']['coordinates'][0][0][1]}
-    data.append(i)
+    s = '{\'lat\': ' + str(item['place']['bounding_box']['coordinates'][0][0][0]) + ', \'long\': ' + str(item['place']['bounding_box']['coordinates'][0][0][1]) + '}'
+    print(s + "\n")
+    data.append(s)
 
-  print(data)
+  separator = ', '
+  arrayStr = separator.join(data)
+  print(arrayStr + "\n")
 
-  return render_template('test.html', data=data)    # TODO: replace "test.html" with correct html file name
+  dataStr = '{\'array\':[' + arrayStr + ']}'
+  print(dataStr)
+
+  return render_template('test.html', data=dataStr)    # TODO: replace "test.html" with correct html file name
 
 # @app.before_first_request(fetch_tweets)
 # @app.route("/")
