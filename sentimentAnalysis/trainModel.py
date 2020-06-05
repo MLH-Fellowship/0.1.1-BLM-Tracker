@@ -82,9 +82,8 @@ def generateEmbeddingsIndex(generatePickle=False):
         print("\nGenerating embeddings index:")
         with open(embeddingsFile) as f:
             for line in tqdm(f, total=400000):
-                values = line.split()
-                word = values[0]
-                coefs = np.asarray(values[1:], dtype='float32')
+                word, coefs = line.split(maxsplit=1)
+                coefs = np.fromstring(coefs, 'f', sep=' ')
                 embeddingsIndex[word] = coefs
         output = open(embeddingsIndexFile, 'wb')
         pickle.dump(embeddingsIndex, output)
@@ -102,9 +101,13 @@ def generateEmbeddingsMatrix():
     kerasTokenizer.fit_on_texts(tweets)
     tweetArray = kerasTokenizer.texts_to_sequences(tweets)
     word_index = kerasTokenizer.word_index
+    print('Found %s unique tokens.' % len(word_index))
+
     num_words = min(len(word_index) + 1, maxWordCount)
-    maxTweetLength = max(list(map(len, tweetArray)))
     tweets = pad_sequences(tweetArray, maxlen=maxTokenLength)
+
+    print('Shape of data tensor:', tweets.shape)
+    print('Shape of label tensor:', labels.shape)
 
     indices = np.arange(tweets.shape[0])
     np.random.shuffle(indices)
@@ -120,7 +123,7 @@ def generateEmbeddingsMatrix():
         if embedding_vector is not None:
             embeddingsMatrix[i] = embedding_vector
 
-    return num_words, maxTweetLength
+    return num_words
 
 
 def _get_available_gpus():
@@ -155,7 +158,7 @@ def main():
     generateEmbeddingsIndex()
 
     # Scrubbing and verifying data
-    uniqueWordCount, maxLength = generateEmbeddingsMatrix()
+    uniqueWordCount = generateEmbeddingsMatrix()
 
     # Construct sentiment analysis model
     embedding_layer = Embedding(uniqueWordCount, dimensionCount, embeddings_initializer=Constant(embeddingsMatrix), input_length=maxTokenLength, trainable=False)
