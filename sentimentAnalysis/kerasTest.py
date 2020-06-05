@@ -1,18 +1,6 @@
-'''This script loads pre-trained word embeddings (GloVe embeddings)
-into a frozen Keras Embedding layer, and uses it to
-train a text classification model on the 20 Newsgroup dataset
-(classification of newsgroup messages into 20 different categories).
-GloVe embedding data can be found at:
-http://nlp.stanford.edu/data/glove.6B.zip
-(source page: http://nlp.stanford.edu/projects/glove/)
-20 Newsgroup data can be found at:
-http://www.cs.cmu.edu/afs/cs.cmu.edu/project/theo-20/www/data/news20.html
-'''
-
 from __future__ import print_function
 
 import os
-import sys
 import numpy as np
 import pandas as pd
 from keras.preprocessing.text import Tokenizer
@@ -43,12 +31,14 @@ VALIDATION_SPLIT = 0.2
 
 testDataFile = "sentimentAnalysisData/testData.csv"
 
+embeddings_index = {}
+
+
 # first, build index mapping words in the embeddings set
 # to their embedding vector
 
 print('Indexing word vectors.')
 
-embeddings_index = {}
 with open(os.path.join(GLOVE_DIR, 'glove.6B.100d.txt')) as f:
     for line in f:
         word, coefs = line.split(maxsplit=1)
@@ -172,5 +162,7 @@ model.compile(loss='categorical_crossentropy',
 
 model.fit(x_train, y_train,
           batch_size=128,
-          epochs=10,
+          epochs=50,
           validation_data=(x_val, y_val))
+
+model.save('model.h5')
