@@ -18,12 +18,10 @@
     <div id="map"></div>
     <script>
       var coordinatesData = '{{ data|tojson }}';
-      console.log(coordinatesData);
 
       var coordinateStr = coordinatesData.substring(1, coordinatesData.length - 1);
 
       const coordinatesObj = JSON.parse(coordinateStr);
-      console.log(coordinatesObj.array);
       
       var map;
       function initMap() {
@@ -38,23 +36,20 @@
 
       function eqfeed_callback(results) {
         var heatmapData = [];
-        console.log(results)
 
         for (var i = 0; i < results.length; i++) {
           
           var latLng = new google.maps.LatLng(results[i].long, results[i].lat);
-          console.log(results[i]);
           
           heatmapData.push(latLng);
         }
 
-        console.log(heatmapData);
         var heatmap = new google.maps.visualization.HeatmapLayer({
           data: heatmapData,
           dissipating: false,
           map: map,
-          radius: 1,
-          opacity: .6
+          radius: 2,
+          opacity: .7
         });
       }
     </script>
