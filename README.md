@@ -1,5 +1,5 @@
 # BLM Tracker
-Stream twitter data through a classifier to determine the amount of social activity surrounding a social movement and visualizing it.
+Stream twitter data through a classifier to determine the amount of social activity surrounding a social movement and visualizing it written in Python
 
 ## Technologies Used
 
@@ -28,5 +28,7 @@ Stream twitter data through a classifier to determine the amount of social activ
 * [Tweepy](http://docs.tweepy.org/en/latest/)
     * An open-source python library used to access the Twitter API
 ### Other
+* [Google Maps API](https://developers.google.com/maps/documentation)
+    * Google Maps API used for address validation and geocode coordinate extraction
 * [Twitter API](https://developer.twitter.com/en/docs)
     * Used to stream tweets live into the sentiment analysis model
