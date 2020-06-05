@@ -38,10 +38,11 @@
         var heatmapData = [];
 
         for (var i = 0; i < results.length; i++) {
+
+          var weightedLatLng = {location: new google.maps.LatLng(results[i].long, results[i].lat), weight: results[i].Sentiment};
+          // var latLng = new google.maps.LatLng(results[i].long, results[i].lat);
           
-          var latLng = new google.maps.LatLng(results[i].long, results[i].lat);
-          
-          heatmapData.push(latLng);
+          heatmapData.push(weightedLatLng);
         }
 
         var heatmap = new google.maps.visualization.HeatmapLayer({
@@ -54,7 +55,7 @@
       }
     </script>
     <script async defer
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCS1pv3UNX5dWNp5o2bJm6q2j3iU33hbYQ&libraries=visualization&callback=initMap">
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCdPDNaS5y7umRBPlZanTIR3cMr0WuCKPg&libraries=visualization&callback=initMap">
     </script>
   </body>
 </html>
