@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import os
+import pickle
 import numpy as np
 import pandas as pd
 from keras.preprocessing.text import Tokenizer
@@ -11,39 +12,51 @@ from keras.layers import Conv1D, MaxPooling1D, Embedding
 from keras.models import Model
 from keras.initializers import Constant
 
-from string import digits
-remove_digits = str.maketrans('', '', digits)  # To strip digits
-
 from tqdm import tqdm
-
-from nltk.tokenize import TweetTokenizer  # a tweet tokenizer from nltk.
-tokenizer = TweetTokenizer()
 tqdm.pandas()
 
+from nltk.tokenize import TweetTokenizer
+tokenizer = TweetTokenizer()
+
+from string import digits
+remove_digits = str.maketrans('', '', digits)
 
 BASE_DIR = 'sentimentAnalysisData'
-GLOVE_DIR = BASE_DIR
+embeddingsFileName = 'glove.6B.100d.txt'
+embeddingsIndexFileName = 'glove.6B.100d.txt'
 TEXT_DATA_DIR = os.path.join(BASE_DIR, '20_newsgroup')
 MAX_SEQUENCE_LENGTH = 1000
 MAX_NUM_WORDS = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
 
-testDataFile = "sentimentAnalysisData/testData.csv"
+testDataFile = "testData.csv"
+embeddingsFile = "glove.6B.100d.txt"
+embeddingsIndexFile = "embeddingsIndex.pkl"
 
-embeddings_index = {}
+embeddings_index = dict()
 
 
-# first, build index mapping words in the embeddings set
-# to their embedding vector
+def generateEmbeddingsIndex(generatePickle=False):
+    global embeddings_index
+    if generatePickle:
+        print("\nGenerating embeddings index:")
+        with open(os.path.join(BASE_DIR, embeddingsFileName)) as f:
+            for line in tqdm(f, total=400000):
+                word, coefs = line.split(maxsplit=1)
+                coefs = np.fromstring(coefs, 'f', sep=' ')
+                embeddings_index[word] = coefs
+        output = open(embeddings_index, 'wb')
+        pickle.dump(embeddings_index, output)
+        output.close()
+    else:
+        print("\nLoading embeddings index")
+        pklFile = open(embeddings_index, 'rb')
+        embeddingsIndex = pickle.load(pklFile)
+        pklFile.close()
 
-print('Indexing word vectors.')
 
-with open(os.path.join(GLOVE_DIR, 'glove.6B.100d.txt')) as f:
-    for line in f:
-        word, coefs = line.split(maxsplit=1)
-        coefs = np.fromstring(coefs, 'f', sep=' ')
-        embeddings_index[word] = coefs
+constructEmbeddingsIndex()
 
 print('Found %s word vectors.' % len(embeddings_index))
 
@@ -162,7 +175,7 @@ model.compile(loss='categorical_crossentropy',
 
 model.fit(x_train, y_train,
           batch_size=128,
-          epochs=50,
+          epochs=10,
           validation_data=(x_val, y_val))
 
-model.save('model.h5')
+# model.save('model.h5')  # TODO: Remove commment
