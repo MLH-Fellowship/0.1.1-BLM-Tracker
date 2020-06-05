@@ -38,6 +38,7 @@ termFileName = "BLMTerms.txt"
 
 topRight = [49.123606, -65.688553]
 bottomLeft = [24.349138, -124.923975]
+maxSentiment = 9
 
 dataFolder = 'sentimentAnalysis/sentimentAnalysisData'
 maxTweetLength = 1000
@@ -73,15 +74,31 @@ def kerasTweet(tweet):
     return tweet
 
 
-def getSentiment(tweetText):
+def calculateSentiment(tweetText):
     tokenizedTweet = tweetTokenizer(tweetText)
     if tokenizedTweet == invalidTweet:
-        return -1
-    print(tokenizedTweet)
+        return 0
     tweet = kerasTweet(tokenizedTweet)
     sentiment = model.predict(np.array(tweet))
-    print(sentiment)
-    return sentiment
+    return sentiment[0]
+
+
+def getSentiment(tweet):
+    tweetText = tweet['extended_tweet']['full_text'] if tweet['truncated'] else tweet['quoted_status']['text']
+    sentiment = calculateSentiment(tweetText)
+
+    # Use sentiment analysis to get a base sentiment
+    baseSentiment = 4 - sentiment.index(max(sentiment))
+
+    # Use interactivity to calculate sentiment scalar
+    quoteCount = tweet['quote_count']
+    replyCount = tweet['reply_count']
+    retweetCount = tweet['retweet_count']
+    favoriteCount = tweet['favorite_count']
+    sentimentScalar = (favoriteCount + retweetCount * 3 + replyCount * 1.5 + quoteCount * 4.5) / 100000
+
+    finalSentiment = min(maxSentiment, max(baseSentiment * sentimentScalar, baseSentiment))
+    return finalSentiment
 
 
 
