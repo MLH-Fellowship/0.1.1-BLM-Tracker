@@ -1,11 +1,13 @@
-<!-- source: https://developers.google.com/maps/documentation/javascript/earthquakes#heatmaps -->
+<!-- Created by Parthiv Chigurupati, Stella Wang, and Amir Yalamov -->
 
 <!DOCTYPE html>
 <html>
   <head>
+    <!-- import jQuery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <style>
       #map {
-        height: 100%;
+        height: 80%;
       }
       html, body {
         height: 100%;
@@ -16,26 +18,42 @@
   </head>
   <body>
     <div id="map"></div>
+    <form action="/refresh/" method="post">
+      <button name="refresh" type="submit">Refresh</button>
+    </form>
     <script>
-      setInterval('window.location.reload()', 60 * 1000);
+      //auto refresh page every t seconds = 10 minutes
+      const t = 30; 
 
+      $(document).ready(function() {
+        setInterval('refreshPage()', t * 1000);
+      });
+
+      function refreshPage() { 
+        location.reload(); 
+      }
+      
+      //receives and parses json object from python file
       var coordinatesData = '{{ data|tojson }}';
 
       var coordinateStr = coordinatesData.substring(1, coordinatesData.length - 1);
 
       const coordinatesObj = JSON.parse(coordinateStr);
       
+      //initializes google maps
       var map;
       function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 7,
-          center: {lat: 44.9778, lng: -93.2650},
+          zoom: 5,
+          center: {lat: 39.0119, lng: -98.4842},
           mapTypeId: 'roadmap'
         });
 
+        //calls function for drawing heatmap
         eqfeed_callback(coordinatesObj.array);
       }
 
+      //function that converts array of json obj coordinates to heatmap
       function eqfeed_callback(results) {
         var heatmapData = [];
 

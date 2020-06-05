@@ -25,8 +25,6 @@ for module in importModules:
 client = MongoClient('mongodb://localhost:27017')
 db = client.tweetDatabase
 col = db.tweetCollection
-#db.command('convertToCapped', 'tweetCollection', size=5242880)
-# print("connected to MongoDB:", client["HOST"])
 
 tweetCounter = 0
 tweetLimit = 3
@@ -36,22 +34,12 @@ trialCounter = 0
 class MyStreamListener(tweepy.StreamListener):
 
     def on_data(self, data):
-        global trialCounter, tweetCounter
-        trialCounter += 1
-        sys.stdout.write("\rTweet #: {}".format(trialCounter))
-        sys.stdout.flush()
         obj = json.loads(data)
         location = locationExists(obj)
         if location:
             coordinates = locationIsValid(location)
             if coordinates:
-                # if coordinatesInBounds(obj["place"]["bounding_box"]["coordinates"][0][0]):
                 store_tweet(obj, col)
-
-                tweetCounter += 1
-                print("Location Validated! {}".format(tweetCounter))
-                if tweetCounter == tweetLimit:
-                    sys.exit(0)
 
     def on_status(self, status):
         print(status.text)
