@@ -28,8 +28,8 @@
       var map;
       function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 2,
-          center: {lat: -33.865427, lng: 151.196123},
+          zoom: 7,
+          center: {lat: 44.9778, lng: -93.2650},
           mapTypeId: 'roadmap'
         });
 
@@ -52,7 +52,9 @@
         var heatmap = new google.maps.visualization.HeatmapLayer({
           data: heatmapData,
           dissipating: false,
-          map: map
+          map: map,
+          radius: 1,
+          opacity: .6
         });
       }
     </script>
