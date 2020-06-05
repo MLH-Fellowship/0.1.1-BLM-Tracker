@@ -24,13 +24,11 @@
       var coordinatesData = '{{ data|tojson }}';
       console.log(coordinatesData);
 
-      var coordinatesObj = JSON.parse(coordinatesData);
-      console.log(coordinatesObj)
-      
-      // for(var i = 0; i < 7; i++) {
-      //   console.log(coordinatesObj[i]);
-      // }
+      var coordinateStr = coordinatesData.substring(1, coordinatesData.length - 1);
 
+      const coordinatesObj = JSON.parse(coordinateStr);
+      console.log(coordinatesObj.array);
+      
       var map;
       function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
