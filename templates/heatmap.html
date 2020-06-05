@@ -4,12 +4,9 @@
 <html>
   <head>
     <style>
-      /* Always set the map height explicitly to define the size of the div
-       * element that contains the map. */
       #map {
         height: 100%;
       }
-      /* Optional: Makes the sample page fill the window. */
       html, body {
         height: 100%;
         margin: 0;
@@ -20,7 +17,6 @@
   <body>
     <div id="map"></div>
     <script>
-      // pass in 'data' from flask and convert to a JSON form
       var coordinatesData = '{{ data|tojson }}';
       console.log(coordinatesData);
 
@@ -37,31 +33,22 @@
           mapTypeId: 'roadmap'
         });
 
-        // Create a <script> tag and set the USGS URL as the source.
-        var script = document.createElement('script');
-
-        script.src = coordinatesData;
-
-        document.getElementsByTagName('head')[0].appendChild(script);
-
+        eqfeed_callback(coordinatesObj.array);
       }
 
-      // results I guess is from document, document (and hence results) in this case is the actual GeoJSON file
-      // need to modify code above
       function eqfeed_callback(results) {
         var heatmapData = [];
-        // features.length is the amount of locations in the geoJSON file
-        // can modify code to fit array length of 'data' from flask
-        for (var i = 0; i < results.features.length; i++) {
-          // coords get coordinates (lat. and long.) from results, which comes from document
-          // for example, the line below will get the coordinates from a location entry that has the field "geometry":
-          // ..., "geometry":{"type":"Point","coordinates":[-178.3725,-20.753,544.19]}, ...
-          var coords = results.features[i].geometry.coordinates;
-          // LatLng basically just takes a lat. and long., here it gets it from the coords var
-          var latLng = new google.maps.LatLng(coords[1], coords[0]);
-          // from this line below its kinda obvious, its basically the actual heat map being created
+        console.log(results)
+
+        for (var i = 0; i < results.length; i++) {
+          
+          var latLng = new google.maps.LatLng(results[i].long, results[i].lat);
+          console.log(results[i]);
+          
           heatmapData.push(latLng);
         }
+
+        console.log(heatmapData);
         var heatmap = new google.maps.visualization.HeatmapLayer({
           data: heatmapData,
           dissipating: false,
