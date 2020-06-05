@@ -6,9 +6,8 @@
 import pandas as pd
 from string import digits
 import numpy as np
-
-from gensim.models.word2vec import Word2Vec
-from gensim.models.doc2vec import TaggedDocument
+import deepdish as dd
+import pickle
 
 from keras.preprocessing.sequence import pad_sequences
 from keras.layers import Dense, Input, GlobalMaxPooling1D
@@ -16,23 +15,23 @@ from keras.layers import Conv1D, MaxPooling1D, Embedding, GRU
 from keras.models import Model
 from keras.initializers import Constant
 from keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.utils import to_categorical
+from keras.utils import to_categorical
 
 import tensorflow as tf
 import keras.backend.tensorflow_backend as tfback
 
-
 from tqdm import tqdm
-tqdm.pandas(desc="progress-bar")
 
 from nltk.tokenize import TweetTokenizer  # a tweet tokenizer from nltk.
+
 tokenizer = TweetTokenizer()
+tqdm.pandas()
 
 
 trainingDataFile = "sentimentAnalysisData/trainingData.csv"
 testDataFile = "sentimentAnalysisData/testData.csv"
 embeddingsFile = "sentimentAnalysisData/glove.6B.100d.txt"
+embeddingsIndexFile = "sentimentAnalysisData/embeddingsIndex.pkl"
 dimensionCount = 100  # Number of dimensions in which to represent the words
 remove_digits = str.maketrans('', '', digits)  # To strip digits
 maxWordCount = 3000
@@ -78,31 +77,37 @@ def postProcess(data):
     return data
 
 
-def labelTokens(data, label):
-    labeledTokens = list()
-    for index, tokens in enumerate(data):
-        label = "{}_{}".format(label, index)
-        labeledTokens.append(TaggedDocument(words=tokens, tags=[label]))
-    return labeledTokens
-
-
-def generateEmbeddingsIndex():
+def generateEmbeddingsIndex(generatePickle=False):
     global embeddingsIndex
-    with open(embeddingsFile) as f:
-        for line in tqdm(f, total=400000):
-            word, coefs = line.split(maxsplit=1)
-            coefs = np.fromstring(coefs, 'f', sep=' ')
-            embeddingsIndex[word] = coefs
+    if generatePickle:
+        pklFile = open(embeddingsIndexFile, 'rb')
+        embeddingsIndex = pickle.load(pklFile)
+        pklFile.close()
+    else:
+        with open(embeddingsFile) as f:
+            for line in tqdm(f, total=400000):
+                values = line.split()
+                word = values[0]
+                coefs = np.asarray(values[1:], dtype='float32')
+                embeddingsIndex[word] = coefs
+        output = open(embeddingsIndexFile, 'wb')
+        pickle.dump(embeddingsIndex, output)
+        output.close()
 
 
-def generateEmbeddingsMatrix(trainingData):
-    global tweets
+def generateEmbeddingsMatrix():
+    global tweets, labels
     kerasTokenizer = Tokenizer(num_words=maxWordCount)
     kerasTokenizer.fit_on_texts(tweets)
     uniqueWordCount = len(kerasTokenizer.word_index) + 1
     tweetArray = kerasTokenizer.texts_to_sequences(tweets)
     maxTweetLength = max(list(map(len, tweetArray)))
     tweets = pad_sequences(tweetArray, maxlen=maxTweetLength)
+
+    indices = np.arange(tweets.shape[0])
+    np.random.shuffle(indices)
+    tweets = tweets[indices]
+    labels = labels[indices]
 
     global embeddingsMatrix
     num_words = min(maxWordCount, uniqueWordCount)
@@ -124,7 +129,7 @@ def _get_available_gpus():
     # Returns
         A list of available GPU devices.
     """
-    #global _LOCAL_DEVICES
+    # global _LOCAL_DEVICES
     if tfback._LOCAL_DEVICES is None:
         devices = tf.config.list_logical_devices()
         tfback._LOCAL_DEVICES = [x.name for x in devices]
@@ -141,6 +146,7 @@ def main():
     tweets = trainingData['tokens'].to_list()
     labels = trainingData['Sentiment'].to_list()
     labels = to_categorical(np.asarray(labels))
+
     testData = ingestData(testDataFile)
     testData = postProcess(testData)
     testX, testY = np.array(testData.tokens), to_categorical(np.asarray(testData.Sentiment))
@@ -150,13 +156,16 @@ def main():
     generateEmbeddingsIndex()
 
     # Scrubbing and verifying data
-    uniqueWordCount, maxLength = generateEmbeddingsMatrix(trainingData.Sentiment)
+    uniqueWordCount, maxLength = generateEmbeddingsMatrix()
 
     # Construct sentiment analysis model
+    print("m: ", maxLength)
+    print(tweets[0])
+
     sequence_input = Input(shape=(maxLength,), dtype='int32')
     embedding_layer = Embedding(uniqueWordCount, dimensionCount, embeddings_initializer=Constant(embeddingsMatrix), input_length=maxLength, trainable=False)
-    embedded_sequences = embedding_layer(sequence_input)
-    x = Conv1D(128, 5, activation='relu', data_format='channels_first')(embedded_sequences)
+
+    x = Conv1D(128, 5, activation='relu', data_format='channels_first')(embedding_layer)
     x = MaxPooling1D(5)(x)
     x = Conv1D(128, 5, activation='relu', data_format='channels_first')(x)
     x = MaxPooling1D(5)(x)
@@ -165,8 +174,12 @@ def main():
     x = Dense(128, activation='relu')(x)
     preds = Dense(3, activation='softmax')(x)
 
+    print(tweets.shape)
+
     model = Model(sequence_input, preds)
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
+    
+    print(model.summary())
 
     model.fit(tweets, labels, batch_size=128, epochs=10, validation_data=(testX, testY))
 
