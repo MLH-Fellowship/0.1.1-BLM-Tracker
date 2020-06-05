@@ -1,7 +1,6 @@
 # BLM Tracker
-Python project that streams twitter data through a classifier to determine the amount of social activity surrounding a social movement and visualizing it
+Python project that streams Twitter data through a classifier to determine the amount of social activity surrounding a social movement and visualizing it
 ![UI](images/ui.png)
-
 
 ## Installation
 You can download the code for this project by executing the following:
@@ -14,6 +13,32 @@ After you have acquired the necessary API keys, download the following [GloVe](h
 
 If you wish to train your own model, you can download a dataset of 1.6 million tweets [here](https://drive.google.com/u/0/uc?export=download&confirm=fK_D&id=0B04GJPshIjmPRnZManQwWEdTZjg) (This will start a 78MB download)
 
+Organize and name your files as per the file structure below
+
+![File Structure](images/fileStructure.png)
+
+
+## Inspiration
+
+With all the Black Lives Matter protests going on in the United States and around the world, social media plays a central role in making people's voices on the matter heard. We thought it would be a great step up if we could visualize the world's social media activity regarding the movement and see which cities and countries are the most active.  
+
+## What It Does
+
+BLM Tracker uses relevant tweets from twitter to create a heat map of which cities are the most active about the movement on social media. It does this by parsing tweets from twitter and using a sentiment analysis model to classify tweets relevant to the BLM movement based on keywords and phrases. It then stores those tweets in a MongoDB instance. It then uses a Flask front-end to connect to the MongoDB instance and iterate through the tweets and create a JSON object of a collection of the latitude and longitude for each of those tweets. This gets passed into the Google Maps API, which creates the heat map.
+
+## How We Built It
+
+This project was built in Python, HTML, and JavaScript.
+
+## What We Learned
+
+We learned a lot about Keras and how sentiment analysis worked. We also learned a lot about several other open source projects like BentoML while researching about different tools we could use for our project.
+
+Further, we learned a ton about Flask and how to integrate MongoDB, parse entries for necessary info, format JSON objects, and integrate all that with the Google Maps API. 
+
+## What's next for BLM Tracker
+
+There are definitely a lot of features that can be further implemented to enhance the experience of the heat map. A desirable one would be to have a sidebar showing the most recent tweets, or a sidebar showing trending keywords.
 
 ## Technologies Used
 ### Open Source 
