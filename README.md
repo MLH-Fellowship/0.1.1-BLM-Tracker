@@ -1,8 +1,19 @@
 # BLM Tracker
 Stream twitter data through a classifier to determine the amount of social activity surrounding a social movement and visualizing it written in Python
 
-## Technologies Used
+## Installation
+You can download the code for this project by executing the following:
+```
+git clone git@github.com:MLH-Fellowship/0.1.1-BLM-Tracker.git
+```
+Next, you need to acquire [Twitter API](https://developer.twitter.com/en) and [Google Maps API](https://developers.google.com/maps/documentation/javascript/get-api-key) keys, and populate them into `userAPIKeys.py` 
 
+After you have acquired the necessary API keys, download the following [GloVe](http://nlp.stanford.edu/data/glove.6B.zip) dataset (NOTE: this will start an 822MB download)
+
+If you wish to train your own model, you can download a dataset of 1.6 million tweets [here](https://drive.google.com/u/0/uc?export=download&confirm=fK_D&id=0B04GJPshIjmPRnZManQwWEdTZjg) (This will start a 78MB download)
+
+
+## Technologies Used
 ### Open Source 
 
 * [Blackbox](https://github.com/StackExchange/blackbox)

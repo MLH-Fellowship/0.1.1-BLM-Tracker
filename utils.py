@@ -28,7 +28,7 @@ tokenizer = TweetTokenizer()
 from string import digits
 remove_digits = str.maketrans('', '', digits)
 
-from apiKeys import *
+from userAPIKeys import *
 
 
 gMaps = googlemaps.Client(key=googlemaps_api_key)
